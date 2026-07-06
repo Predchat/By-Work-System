@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PieceTrack — Piecework Business Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<style>
+  html, body { margin: 0; padding: 0; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+const { useState, useEffect, useMemo, useRef } = React;
+
+function makeIcon(glyph) {
+  return function IconComp({ size = 16, color, style }) {
+    return React.createElement(
+      "span",
+      { style: { fontSize: size, lineHeight: 1, color, display: "inline-block", ...style } },
+      glyph
+    );
+  };
+}
+const LayoutDashboard = makeIcon("\u25A6");
+const Building2 = makeIcon("\u{1F3E2}");
+const Users = makeIcon("\u{1F465}");
+const Package = makeIcon("\u{1F4E6}");
+const ClipboardList = makeIcon("\u{1F4CB}");
+const Wallet = makeIcon("\u{1F4B0}");
+const Truck = makeIcon("\u{1F69A}");
+const BarChart3 = makeIcon("\u{1F4CA}");
+const Plus = makeIcon("+");
+const X = makeIcon("\u2715");
+const Printer = makeIcon("\u{1F5A8}");
+const Share2 = makeIcon("\u2197");
+const Search = makeIcon("\u{1F50D}");
+const Trash2 = makeIcon("\u{1F5D1}");
+const Edit2 = makeIcon("\u270E");
+const CheckCircle2 = makeIcon("\u2713");
+const Clock = makeIcon("\u23F1");
+const AlertTriangle = makeIcon("\u26A0");
+const ChevronRight = makeIcon("\u203A");
+const Boxes = makeIcon("\u25A7");
+const ArrowRight = makeIcon("\u2192");
+
+/* ---------------------------------- constants ---------------------------------- */
+
+const STORAGE_KEY = "tracker-data";
+
+const TASK_TYPES = ["Assemble", "Checking", "Assemble + Checking", "Custom"];
+
+const emptyData = () => ({
+  companies: [],
+  employees: [],
+  batches: [],
+  assignments: [],
+  payments: [],
+  deliveries: [],
+});
+
+const uid = (prefix) =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+const won = (n) =>
+  new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(
+    Math.round(n || 0)
+  );
+
+const numFmt = (n) => new Intl.NumberFormat("ko-KR").format(Math.round(n || 0));
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+const fmtDate = (d) => {
+  if (!d) return "—";
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-CA");
+};
+
+const monthKey = (d) => (d ? d.slice(0, 7) : "");
+
+/* ------------------------------- style injection ------------------------------- */
+
+function GlobalStyle() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+      .pwt-root {
+        --bg: #eef1f0;
+        --surface: #ffffff;
+        --ink: #17221f;
+        --ink-soft: #56645f;
+        --primary: #14453f;
+        --primary-dark: #0c2e2a;
+        --accent: #c96a30;
+        --accent-soft: #f3e3d4;
+        --success: #2f7a4d;
+        --success-soft: #e2f0e6;
+        --warning: #b7862a;
+        --warning-soft: #f6ecd8;
+        --danger: #b23a2e;
+        --danger-soft: #f5e0dc;
+        --border: #dbe1de;
+        --radius: 10px;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: 'Inter', sans-serif;
+        min-height: 100%;
+        width: 100%;
+      }
+      .pwt-root * { box-sizing: border-box; }
+      .pwt-display { font-family: 'Space Grotesk', sans-serif; }
+      .pwt-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+
+      .pwt-shell { display: flex; min-height: 100vh; }
+
+      .pwt-sidebar {
+        width: 216px; flex-shrink: 0; background: var(--primary);
+        color: #eaf1ee; display: flex; flex-direction: column;
+        padding: 20px 12px; gap: 2px;
+      }
+      .pwt-brand {
+        font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px;
+        letter-spacing: 0.02em; color: #fff; padding: 4px 10px 18px 10px;
+        display: flex; align-items: center; gap: 8px;
+      }
+      .pwt-brand .tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent);
+        background: rgba(201,106,48,0.18); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+
+      .pwt-navitem {
+        display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
+        color: #cfe0d8; font-size: 13.5px; font-weight: 500; cursor: pointer; border: none;
+        background: transparent; width: 100%; text-align: left; transition: background 0.12s;
+      }
+      .pwt-navitem:hover { background: rgba(255,255,255,0.07); color: #fff; }
+      .pwt-navitem.active { background: var(--accent); color: #fff; }
+      .pwt-navitem .idx { font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.55; width: 16px; }
+
+      .pwt-main { flex: 1; min-width: 0; padding: 28px 34px 60px 34px; }
+      .pwt-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 10px; }
+      .pwt-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: var(--primary-dark); }
+      .pwt-subtitle { color: var(--ink-soft); font-size: 13px; margin-top: 3px; }
+
+      .pwt-card {
+        background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+        padding: 18px; box-shadow: 0 1px 2px rgba(20,30,25,0.03);
+      }
+      .pwt-grid { display: grid; gap: 14px; }
+      .pwt-grid-4 { grid-template-columns: repeat(4, 1fr); }
+      .pwt-grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .pwt-grid-2 { grid-template-columns: repeat(2, 1fr); }
+      @media (max-width: 980px) { .pwt-grid-4, .pwt-grid-3, .pwt-grid-2 { grid-template-columns: 1fr 1fr; } }
+
+      .pwt-stat-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 600; }
+      .pwt-stat-value { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--primary-dark); margin-top: 6px; }
+      .pwt-stat-sub { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+
+      .pwt-btn {
+        display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+        padding: 8px 14px; border-radius: 7px; border: 1px solid transparent; cursor: pointer;
+        background: var(--primary); color: #fff; transition: filter 0.12s; font-family: 'Inter', sans-serif;
+      }
+      .pwt-btn:hover { filter: brightness(1.1); }
+      .pwt-btn.accent { background: var(--accent); }
+      .pwt-btn.ghost { background: transparent; color: var(--primary); border-color: var(--border); }
+      .pwt-btn.ghost:hover { background: #f2f4f3; }
+      .pwt-btn.danger { background: var(--danger); }
+      .pwt-btn.sm { padding: 5px 10px; font-size: 12px; }
+      .pwt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      .pwt-input, .pwt-select {
+        width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+        font-size: 13.5px; font-family: 'Inter', sans-serif; background: #fff; color: var(--ink);
+      }
+      .pwt-input:focus, .pwt-select:focus { outline: 2px solid var(--primary); outline-offset: 0; }
+      .pwt-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; display: block; }
+      .pwt-field { margin-bottom: 12px; }
+
+      .pwt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .pwt-table th {
+        text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+        color: var(--ink-soft); padding: 8px 10px; border-bottom: 1.5px solid var(--border); font-weight: 700;
+      }
+      .pwt-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      .pwt-table tr:last-child td { border-bottom: none; }
+      .pwt-table tr:hover td { background: #f8faf9; }
+
+      .pwt-badge {
+        display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700;
+        padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em;
+      }
+      .pwt-badge.pending { background: var(--warning-soft); color: var(--warning); }
+      .pwt-badge.completed { background: var(--success-soft); color: var(--success); }
+      .pwt-badge.progress { background: #e4e9f3; color: #3b4f8c; }
+      .pwt-badge.low { background: var(--danger-soft); color: var(--danger); }
+
+      .pwt-empty {
+        text-align: center; padding: 50px 20px; color: var(--ink-soft);
+      }
+      .pwt-empty .icon { opacity: 0.35; margin-bottom: 10px; }
+
+      .pwt-modal-overlay {
+        position: fixed; inset: 0; background: rgba(15,25,20,0.45); display: flex;
+        align-items: center; justify-content: center; z-index: 50; padding: 20px;
+      }
+      .pwt-modal {
+        background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 520px;
+        max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+      }
+      .pwt-modal.wide { max-width: 720px; }
+      .pwt-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .pwt-modal-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 17px; color: var(--primary-dark); }
+      .pwt-close-btn { background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 4px; }
+
+      .pwt-stock-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: #e6e9e7; margin-top: 6px; }
+      .pwt-stock-bar div.raw { background: #9fb0aa; }
+      .pwt-stock-bar div.wip { background: var(--warning); }
+      .pwt-stock-bar div.fin { background: var(--success); }
+
+      .pwt-tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--border); margin-bottom: 18px; }
+      .pwt-tab { padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
+      .pwt-tab.active { color: var(--primary-dark); border-bottom-color: var(--accent); }
+
+      .pwt-search { position: relative; max-width: 260px; }
+      .pwt-search svg { position: absolute; left: 9px; top: 9px; color: var(--ink-soft); }
+      .pwt-search input { padding-left: 30px; }
+
+      .pwt-divider { height: 1px; background: var(--border); margin: 16px 0; }
+
+      .pwt-ledger-id { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: #f1f4f2; padding: 2px 7px; border-radius: 5px; color: var(--primary-dark); letter-spacing: 0.02em; }
+
+      .pwt-print-sheet { background: #fff; padding: 34px; font-family: 'Inter', sans-serif; color: #14201c; max-width: 640px; margin: 0 auto; }
+      .pwt-print-sheet h2 { font-family: 'Space Grotesk', sans-serif; }
+
+      @media print {
+        .pwt-noprint { display: none !important; }
+        .pwt-root, body { background: #fff !important; }
+        .pwt-print-only { display: block !important; }
+      }
+      .pwt-print-only { display: none; }
+
+      .pwt-taskrow { display: grid; grid-template-columns: 1fr 90px 110px 32px; gap: 8px; align-items: end; margin-bottom: 8px; }
+
+      .pwt-icon-btn { background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 4px; border-radius: 5px; }
+      .pwt-icon-btn:hover { background: #f0f2f1; color: var(--ink); }
+    `}</style>
+  );
+}
+
+/* ---------------------------------- storage hook -------------------------------- */
+
+function useTrackerData() {
+  const [data, setData] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : emptyData();
+    } catch (e) {
+      return emptyData();
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (e) {
+      console.error("save failed", e);
+    }
+  }, [data]);
+
+  return [data, setData, false];
+}
+
+/* --------------------------------- computations --------------------------------- */
+
+function taskAssigned(batch, taskId, assignments) {
+  return assignments
+    .filter((a) => a.batchId === batch.id && a.taskId === taskId)
+    .reduce((s, a) => s + Number(a.assignedQty || 0), 0);
+}
+function taskReturned(batch, taskId, assignments) {
+  return assignments
+    .filter((a) => a.batchId === batch.id && a.taskId === taskId)
+    .reduce((s, a) => s + Number(a.returnedQty || 0), 0);
+}
+function batchStock(batch, assignments, deliveries) {
+  let raw = 0, wip = 0, returnedTotal = 0;
+  for (const t of batch.tasks) {
+    const assigned = taskAssigned(batch, t.id, assignments);
+    const returned = taskReturned(batch, t.id, assignments);
+    raw += Math.max(t.quantity - assigned, 0);
+    wip += Math.max(assigned - returned, 0);
+    returnedTotal += returned;
+  }
+  const delivered = deliveries.filter((d) => d.batchId === batch.id).reduce((s, d) => s + Number(d.deliveredQty || 0), 0);
+  const finished = Math.max(returnedTotal - delivered, 0);
+  return { raw, wip, finished, returnedTotal, delivered };
+}
+function batchStatus(batch, assignments) {
+  const totalQty = batch.tasks.reduce((s, t) => s + Number(t.quantity || 0), 0);
+  const totalReturned = batch.tasks.reduce((s, t) => s + taskReturned(batch, t.id, assignments), 0);
+  return totalQty > 0 && totalReturned >= totalQty ? "Completed" : "Pending";
+}
+function assignmentAmount(a, data) {
+  const batch = data.batches.find((b) => b.id === a.batchId);
+  const task = batch?.tasks.find((t) => t.id === a.taskId);
+  const rate = task ? Number(task.ratePerPiece || 0) : 0;
+  return Number(a.returnedQty || 0) * rate;
+}
+
+/* ------------------------------------ shell ------------------------------------- */
+
+const NAV = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "companies", label: "Companies", icon: Building2 },
+  { id: "employees", label: "Employees", icon: Users },
+  { id: "batches", label: "Batches", icon: Package },
+  { id: "assignments", label: "Work Assignment", icon: ClipboardList },
+  { id: "payslips", label: "Payslips", icon: Wallet },
+  { id: "deliveries", label: "Deliveries", icon: Truck },
+  { id: "reports", label: "Reports", icon: BarChart3 },
+];
+
+function App() {
+  const [data, setData, loading] = useTrackerData();
+  const [view, setView] = useState("dashboard");
+  const [batchDetailId, setBatchDetailId] = useState(null);
+
+  if (loading || data === null) {
+    return (
+      <div className="pwt-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400 }}>
+        <div className="pwt-mono" style={{ color: "#56645f" }}>Loading workshop ledger…</div>
+      </div>
+    );
+  }
+
+  const loadSample = () => {
+    const companyId = uid("co");
+    const empId1 = uid("emp");
+    const empId2 = uid("emp");
+    const taskA = uid("task");
+    const taskB = uid("task");
+    const batchId = uid("batch");
+    setData({
+      ...data,
+      companies: [...data.companies, { id: companyId, name: "Hanul Rubber Co.", contact: "010-2222-3333" }],
+      employees: [
+        ...data.employees,
+        { id: empId1, name: "Kim Ji-woo", contact: "010-1111-2222" },
+        { id: empId2, name: "Lee Soo-jin", contact: "010-4444-5555" },
+      ],
+      batches: [
+        ...data.batches,
+        {
+          id: batchId,
+          companyId,
+          receivedDate: todayStr(),
+          dueDate: todayStr(),
+          totalQuantity: 1000,
+          tasks: [
+            { id: taskA, taskType: "Checking", quantity: 500, ratePerPiece: 150 },
+            { id: taskB, taskType: "Assemble", quantity: 500, ratePerPiece: 220 },
+          ],
+        },
+      ],
+    });
+  };
+
+  const setBatchView = (id) => {
+    setBatchDetailId(id);
+    setView("batchDetail");
+  };
+
+  return (
+    <div className="pwt-root">
+      <GlobalStyle />
+      <div className="pwt-shell pwt-noprint">
+        <aside className="pwt-sidebar">
+          <div className="pwt-brand">
+            <Boxes size={18} color="#c96a30" />
+            PieceTrack <span className="tag">v0.1</span>
+          </div>
+          {NAV.map((n, i) => (
+            <button
+              key={n.id}
+              className={"pwt-navitem" + (view === n.id || (n.id === "batches" && view === "batchDetail") ? " active" : "")}
+              onClick={() => setView(n.id)}
+            >
+              <span className="idx">{String(i + 1).padStart(2, "0")}</span>
+              <n.icon size={15} />
+              {n.label}
+            </button>
+          ))}
+          <div style={{ flex: 1 }} />
+          {data.companies.length === 0 && (
+            <button className="pwt-navitem" style={{ color: "#c96a30" }} onClick={loadSample}>
+              <span className="idx">＋</span>
+              Load sample data
+            </button>
+          )}
+        </aside>
+        <main className="pwt-main">
+          {view === "dashboard" && <Dashboard data={data} goBatch={setBatchView} />}
+          {view === "companies" && <CompaniesView data={data} setData={setData} />}
+          {view === "employees" && <EmployeesView data={data} setData={setData} />}
+          {view === "batches" && <BatchesView data={data} setData={setData} openBatch={setBatchView} />}
+          {view === "batchDetail" && (
+            <BatchDetail data={data} setData={setData} batchId={batchDetailId} back={() => setView("batches")} />
+          )}
+          {view === "assignments" && <AssignmentsView data={data} setData={setData} />}
+          {view === "payslips" && <PayslipsView data={data} setData={setData} />}
+          {view === "deliveries" && <DeliveriesView data={data} setData={setData} />}
+          {view === "reports" && <ReportsView data={data} />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------- dashboard ------------------------------------ */
+
+function Dashboard({ data, goBatch }) {
+  const pendingBatches = data.batches.filter((b) => batchStatus(b, data.assignments) === "Pending");
+  const totalRevenue = data.deliveries.reduce((s, d) => s + Number(d.revenue || 0), 0);
+  const thisMonth = monthKey(todayStr());
+  const monthRevenue = data.deliveries
+    .filter((d) => monthKey(d.deliveredDate) === thisMonth)
+    .reduce((s, d) => s + Number(d.revenue || 0), 0);
+  const unpaidWages = data.assignments
+    .filter((a) => !a.paid && Number(a.returnedQty) > 0)
+    .reduce((s, a) => s + assignmentAmount(a, data), 0);
+
+  let totalRaw = 0, totalWip = 0, totalFinished = 0;
+  for (const b of data.batches) {
+    const s = batchStock(b, data.assignments, data.deliveries);
+    totalRaw += s.raw; totalWip += s.wip; totalFinished += s.finished;
+  }
+
+  return (
+    <div>
+      <Header title="Dashboard" subtitle="Snapshot of the workshop right now" />
+      <div className="pwt-grid pwt-grid-4">
+        <Stat label="Pending batches" value={pendingBatches.length} sub={`${data.batches.length} total`} />
+        <Stat label="Revenue this month" value={won(monthRevenue)} sub="from deliveries" />
+        <Stat label="Total revenue" value={won(totalRevenue)} sub="all time" />
+        <Stat label="Unpaid wages" value={won(unpaidWages)} sub="owed to employees" />
+      </div>
+
+      <div className="pwt-grid pwt-grid-2" style={{ marginTop: 16 }}>
+        <div className="pwt-card">
+          <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Stock overview (pieces)</div>
+          <StockLegendRow label="Raw material" value={totalRaw} cls="raw" />
+          <StockLegendRow label="With employees (WIP)" value={totalWip} cls="wip" />
+          <StockLegendRow label="Finished, ready to deliver" value={totalFinished} cls="fin" />
+        </div>
+        <div className="pwt-card">
+          <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Pending batches</div>
+          {pendingBatches.length === 0 && <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>No pending batches — all caught up.</div>}
+          {pendingBatches.slice(0, 6).map((b) => {
+            const co = data.companies.find((c) => c.id === b.companyId);
+            return (
+              <div key={b.id} onClick={() => goBatch(b.id)}
+                style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)", cursor: "pointer", fontSize: 13 }}>
+                <div>
+                  <span className="pwt-ledger-id">{b.id.slice(-6)}</span>{" "}
+                  <span style={{ fontWeight: 600 }}>{co?.name || "—"}</span>
+                  <span style={{ color: "var(--ink-soft)" }}> · due {fmtDate(b.dueDate)}</span>
+                </div>
+                <ChevronRight size={15} color="var(--ink-soft)" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StockLegendRow({ label, value, cls }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: 2, background: cls === "raw" ? "#9fb0aa" : cls === "wip" ? "var(--warning)" : "var(--success)" }} />
+          {label}
+        </span>
+        <span className="pwt-mono" style={{ fontWeight: 700 }}>{numFmt(value)}</span>
+      </div>
+    </div>
+  );
+}
+
+function Header({ title, subtitle, action }) {
+  return (
+    <div className="pwt-header">
+      <div>
+        <div className="pwt-title">{title}</div>
+        {subtitle && <div className="pwt-subtitle">{subtitle}</div>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }) {
+  return (
+    <div className="pwt-card">
+      <div className="pwt-stat-label">{label}</div>
+      <div className="pwt-stat-value">{value}</div>
+      {sub && <div className="pwt-stat-sub">{sub}</div>}
+    </div>
+  );
+}
+
+/* ---------------------------------- companies ------------------------------------ */
+
+function CompaniesView({ data, setData }) {
+  const [modal, setModal] = useState(null); // {name, contact, editId}
+  const [q, setQ] = useState("");
+
+  const save = () => {
+    if (!modal.name?.trim()) return;
+    if (modal.editId) {
+      setData({ ...data, companies: data.companies.map((c) => c.id === modal.editId ? { ...c, name: modal.name, contact: modal.contact } : c) });
+    } else {
+      setData({ ...data, companies: [...data.companies, { id: uid("co"), name: modal.name, contact: modal.contact || "" }] });
+    }
+    setModal(null);
+  };
+  const del = (id) => {
+    if (data.batches.some((b) => b.companyId === id)) { alert("This company has batches linked to it and can't be deleted."); return; }
+    setData({ ...data, companies: data.companies.filter((c) => c.id !== id) });
+  };
+
+  const filtered = data.companies.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div>
+      <Header title="Companies" subtitle="Businesses supplying material and receiving finished goods"
+        action={<button className="pwt-btn accent" onClick={() => setModal({ name: "", contact: "" })}><Plus size={15} /> Add company</button>} />
+      <div className="pwt-card">
+        <div className="pwt-search" style={{ marginBottom: 14 }}>
+          <Search size={14} />
+          <input className="pwt-input" placeholder="Search companies…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        {filtered.length === 0 ? (
+          <Empty text="No companies yet. Add the first one to get started." />
+        ) : (
+          <table className="pwt-table">
+            <thead><tr><th>Company</th><th>Contact</th><th>Batches</th><th></th></tr></thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 600 }}>{c.name}</td>
+                  <td>{c.contact || "—"}</td>
+                  <td>{data.batches.filter((b) => b.companyId === c.id).length}</td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="pwt-icon-btn" onClick={() => setModal({ ...c, editId: c.id })}><Edit2 size={14} /></button>
+                    <button className="pwt-icon-btn" onClick={() => del(c.id)}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <Modal title={modal.editId ? "Edit company" : "Add company"} onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Company name</label>
+            <input className="pwt-input" value={modal.name} onChange={(e) => setModal({ ...modal, name: e.target.value })} autoFocus /></div>
+          <div className="pwt-field"><label className="pwt-label">Contact</label>
+            <input className="pwt-input" value={modal.contact} onChange={(e) => setModal({ ...modal, contact: e.target.value })} placeholder="Phone / email" /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Save company</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------- employees ------------------------------------ */
+
+function EmployeesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [q, setQ] = useState("");
+
+  const save = () => {
+    if (!modal.name?.trim()) return;
+    if (modal.editId) {
+      setData({ ...data, employees: data.employees.map((e) => e.id === modal.editId ? { ...e, name: modal.name, contact: modal.contact } : e) });
+    } else {
+      setData({ ...data, employees: [...data.employees, { id: uid("emp"), name: modal.name, contact: modal.contact || "" }] });
+    }
+    setModal(null);
+  };
+  const del = (id) => {
+    if (data.assignments.some((a) => a.employeeId === id)) { alert("This employee has work assignments linked to them and can't be deleted."); return; }
+    setData({ ...data, employees: data.employees.filter((e) => e.id !== id) });
+  };
+  const filtered = data.employees.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div>
+      <Header title="Employees" subtitle="People doing piecework from home"
+        action={<button className="pwt-btn accent" onClick={() => setModal({ name: "", contact: "" })}><Plus size={15} /> Add employee</button>} />
+      <div className="pwt-card">
+        <div className="pwt-search" style={{ marginBottom: 14 }}>
+          <Search size={14} />
+          <input className="pwt-input" placeholder="Search employees…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        {filtered.length === 0 ? <Empty text="No employees yet. Add the first one to get started." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Name</th><th>Contact</th><th>Active assignments</th><th>Unpaid earnings</th><th></th></tr></thead>
+            <tbody>
+              {filtered.map((e) => {
+                const unpaid = data.assignments.filter((a) => a.employeeId === e.id && !a.paid && a.returnedQty > 0)
+                  .reduce((s, a) => s + assignmentAmount(a, data), 0);
+                const active = data.assignments.filter((a) => a.employeeId === e.id && a.status !== "Returned").length;
+                return (
+                  <tr key={e.id}>
+                    <td style={{ fontWeight: 600 }}>{e.name}</td>
+                    <td>{e.contact || "—"}</td>
+                    <td>{active}</td>
+                    <td className="pwt-mono">{won(unpaid)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button className="pwt-icon-btn" onClick={() => setModal({ ...e, editId: e.id })}><Edit2 size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => del(e.id)}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modal && (
+        <Modal title={modal.editId ? "Edit employee" : "Add employee"} onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Full name</label>
+            <input className="pwt-input" value={modal.name} onChange={(e) => setModal({ ...modal, name: e.target.value })} autoFocus /></div>
+          <div className="pwt-field"><label className="pwt-label">Contact (phone, for WhatsApp / KakaoTalk)</label>
+            <input className="pwt-input" value={modal.contact} onChange={(e) => setModal({ ...modal, contact: e.target.value })} placeholder="e.g. 82101234567" /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Save employee</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------ batches ------------------------------------ */
+
+function BatchesView({ data, setData, openBatch }) {
+  const [modal, setModal] = useState(null);
+  const [filter, setFilter] = useState("All");
+
+  const openNew = () => setModal({
+    companyId: data.companies[0]?.id || "", receivedDate: todayStr(), dueDate: todayStr(),
+    tasks: [{ id: uid("task"), taskType: "Assemble", quantity: "", ratePerPiece: "" }],
+  });
+
+  const addTaskRow = () => setModal({ ...modal, tasks: [...modal.tasks, { id: uid("task"), taskType: "Assemble", quantity: "", ratePerPiece: "" }] });
+  const updateTask = (id, field, val) => setModal({ ...modal, tasks: modal.tasks.map((t) => t.id === id ? { ...t, [field]: val } : t) });
+  const removeTask = (id) => setModal({ ...modal, tasks: modal.tasks.filter((t) => t.id !== id) });
+
+  const save = () => {
+    if (!modal.companyId) { alert("Select a company first."); return; }
+    const tasks = modal.tasks.filter((t) => t.quantity && t.ratePerPiece).map((t) => ({ ...t, quantity: Number(t.quantity), ratePerPiece: Number(t.ratePerPiece) }));
+    if (tasks.length === 0) { alert("Add at least one task with quantity and rate."); return; }
+    const totalQuantity = tasks.reduce((s, t) => s + t.quantity, 0);
+    setData({ ...data, batches: [...data.batches, { id: uid("batch"), companyId: modal.companyId, receivedDate: modal.receivedDate, dueDate: modal.dueDate, totalQuantity, tasks }] });
+    setModal(null);
+  };
+
+  const visible = data.batches.filter((b) => filter === "All" || batchStatus(b, data.assignments) === filter);
+
+  return (
+    <div>
+      <Header title="Batches" subtitle="Orders of pieces received from companies"
+        action={<button className="pwt-btn accent" onClick={openNew} disabled={data.companies.length === 0}><Plus size={15} /> New batch</button>} />
+      {data.companies.length === 0 && <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>Add a company first before creating a batch.</div>}
+
+      <div className="pwt-tabs">
+        {["All", "Pending", "Completed"].map((f) => (
+          <div key={f} className={"pwt-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>{f}</div>
+        ))}
+      </div>
+
+      <div className="pwt-card">
+        {visible.length === 0 ? <Empty text="No batches here yet." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Batch</th><th>Company</th><th>Received</th><th>Due</th><th>Quantity</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {visible.map((b) => {
+                const co = data.companies.find((c) => c.id === b.companyId);
+                const status = batchStatus(b, data.assignments);
+                return (
+                  <tr key={b.id} style={{ cursor: "pointer" }} onClick={() => openBatch(b.id)}>
+                    <td><span className="pwt-ledger-id">{b.id.slice(-6)}</span></td>
+                    <td style={{ fontWeight: 600 }}>{co?.name || "—"}</td>
+                    <td>{fmtDate(b.receivedDate)}</td>
+                    <td>{fmtDate(b.dueDate)}</td>
+                    <td className="pwt-mono">{numFmt(b.totalQuantity)}</td>
+                    <td><span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span></td>
+                    <td><ChevronRight size={14} color="var(--ink-soft)" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <Modal title="New batch" onClose={() => setModal(null)} wide>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Company</label>
+              <select className="pwt-select" value={modal.companyId} onChange={(e) => setModal({ ...modal, companyId: e.target.value })}>
+                {data.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select></div>
+            <div />
+            <div className="pwt-field"><label className="pwt-label">Received date</label>
+              <input type="date" className="pwt-input" value={modal.receivedDate} onChange={(e) => setModal({ ...modal, receivedDate: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Due date</label>
+              <input type="date" className="pwt-input" value={modal.dueDate} onChange={(e) => setModal({ ...modal, dueDate: e.target.value })} /></div>
+          </div>
+
+          <div className="pwt-divider" />
+          <label className="pwt-label">Split into tasks</label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 90px 120px 32px", gap: 8, fontSize: 11, color: "var(--ink-soft)", marginBottom: 4 }}>
+            <div>Task type</div><div>Qty (pcs)</div><div>Rate/pc (₩)</div><div></div>
+          </div>
+          {modal.tasks.map((t) => (
+            <div className="pwt-taskrow" key={t.id}>
+              <select className="pwt-select" value={t.taskType} onChange={(e) => updateTask(t.id, "taskType", e.target.value)}>
+                {TASK_TYPES.map((tt) => <option key={tt} value={tt}>{tt}</option>)}
+              </select>
+              <input className="pwt-input" type="number" min="0" value={t.quantity} onChange={(e) => updateTask(t.id, "quantity", e.target.value)} placeholder="0" />
+              <input className="pwt-input" type="number" min="0" value={t.ratePerPiece} onChange={(e) => updateTask(t.id, "ratePerPiece", e.target.value)} placeholder="0" />
+              <button className="pwt-icon-btn" onClick={() => removeTask(t.id)}><X size={15} /></button>
+            </div>
+          ))}
+          <button className="pwt-btn ghost sm" onClick={addTaskRow}><Plus size={13} /> Add task row</button>
+
+          <div className="pwt-divider" />
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Create batch</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function BatchDetail({ data, setData, batchId, back }) {
+  const batch = data.batches.find((b) => b.id === batchId);
+  if (!batch) return <div>Batch not found. <button className="pwt-btn ghost" onClick={back}>Back</button></div>;
+  const co = data.companies.find((c) => c.id === batch.companyId);
+  const status = batchStatus(batch, data.assignments);
+  const stock = batchStock(batch, data.assignments, data.deliveries);
+
+  return (
+    <div>
+      <button className="pwt-btn ghost sm" style={{ marginBottom: 12 }} onClick={back}>← Back to batches</button>
+      <Header title={`Batch ${batch.id.slice(-6)}`} subtitle={`${co?.name || "—"} · received ${fmtDate(batch.receivedDate)} · due ${fmtDate(batch.dueDate)}`}
+        action={<span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span>} />
+
+      <div className="pwt-grid pwt-grid-3" style={{ marginBottom: 16 }}>
+        <Stat label="Raw (unassigned)" value={numFmt(stock.raw)} />
+        <Stat label="With employees (WIP)" value={numFmt(stock.wip)} />
+        <Stat label="Finished, undelivered" value={numFmt(stock.finished)} />
+      </div>
+
+      <div className="pwt-card">
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Tasks in this batch</div>
+        <table className="pwt-table">
+          <thead><tr><th>Task type</th><th>Quantity</th><th>Rate/pc</th><th>Assigned</th><th>Returned</th><th>Raw left</th></tr></thead>
+          <tbody>
+            {batch.tasks.map((t) => {
+              const assigned = taskAssigned(batch, t.id, data.assignments);
+              const returned = taskReturned(batch, t.id, data.assignments);
+              return (
+                <tr key={t.id}>
+                  <td style={{ fontWeight: 600 }}>{t.taskType}</td>
+                  <td className="pwt-mono">{numFmt(t.quantity)}</td>
+                  <td className="pwt-mono">{won(t.ratePerPiece)}</td>
+                  <td className="pwt-mono">{numFmt(assigned)}</td>
+                  <td className="pwt-mono">{numFmt(returned)}</td>
+                  <td className="pwt-mono">{numFmt(t.quantity - assigned)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="pwt-card" style={{ marginTop: 14 }}>
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Work assignments for this batch</div>
+        {data.assignments.filter((a) => a.batchId === batch.id).length === 0 ? <Empty text="No work assigned yet — go to Work Assignment to assign pieces." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Task</th><th>Assigned</th><th>Returned</th><th>Status</th></tr></thead>
+            <tbody>
+              {data.assignments.filter((a) => a.batchId === batch.id).map((a) => {
+                const emp = data.employees.find((e) => e.id === a.employeeId);
+                const task = batch.tasks.find((t) => t.id === a.taskId);
+                return (
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td>
+                    <td>{task?.taskType || "—"}</td>
+                    <td className="pwt-mono">{numFmt(a.assignedQty)}</td>
+                    <td className="pwt-mono">{numFmt(a.returnedQty)}</td>
+                    <td><span className={"pwt-badge " + (a.status === "Returned" ? "completed" : "progress")}>{a.status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------- assignments ------------------------------------ */
+
+function AssignmentsView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [returnModal, setReturnModal] = useState(null);
+  const [filter, setFilter] = useState("Open");
+
+  const openBatches = data.batches.filter((b) => batchStatus(b, data.assignments) === "Pending");
+
+  const openNew = () => setModal({ batchId: openBatches[0]?.id || "", taskId: "", employeeId: data.employees[0]?.id || "", assignedQty: "", assignedDate: todayStr() });
+
+  const selectedBatch = modal ? data.batches.find((b) => b.id === modal.batchId) : null;
+  const availableTasks = selectedBatch ? selectedBatch.tasks.filter((t) => t.quantity - taskAssigned(selectedBatch, t.id, data.assignments) > 0) : [];
+
+  const save = () => {
+    if (!modal.batchId || !modal.taskId || !modal.employeeId || !modal.assignedQty) { alert("Fill in all fields."); return; }
+    const batch = data.batches.find((b) => b.id === modal.batchId);
+    const task = batch.tasks.find((t) => t.id === modal.taskId);
+    const rawLeft = task.quantity - taskAssigned(batch, task.id, data.assignments);
+    const qty = Number(modal.assignedQty);
+    if (qty > rawLeft) { alert(`Only ${rawLeft} pieces left unassigned for this task.`); return; }
+    setData({
+      ...data, assignments: [...data.assignments, {
+        id: uid("asg"), batchId: modal.batchId, taskId: modal.taskId, employeeId: modal.employeeId,
+        assignedQty: qty, returnedQty: 0, assignedDate: modal.assignedDate, returnedDate: null, status: "In Progress", paid: false,
+      }],
+    });
+    setModal(null);
+  };
+
+  const saveReturn = () => {
+    const a = returnModal;
+    const returnedQty = Number(a.returnedQty);
+    if (returnedQty < 0 || returnedQty > a.assignedQty) { alert(`Returned quantity must be between 0 and ${a.assignedQty}.`); return; }
+    setData({
+      ...data,
+      assignments: data.assignments.map((x) => x.id === a.id ? { ...x, returnedQty, returnedDate: a.returnedDate || todayStr(), status: returnedQty >= x.assignedQty ? "Returned" : "In Progress" } : x),
+    });
+    setReturnModal(null);
+  };
+
+  const list = data.assignments.filter((a) => filter === "All" || (filter === "Open" ? a.status !== "Returned" : a.status === "Returned"));
+
+  return (
+    <div>
+      <Header title="Work Assignment" subtitle="Give pieces to employees and record what comes back"
+        action={<button className="pwt-btn accent" onClick={openNew} disabled={openBatches.length === 0 || data.employees.length === 0}><Plus size={15} /> Assign work</button>} />
+      {(openBatches.length === 0 || data.employees.length === 0) && (
+        <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>
+          You need at least one pending batch with raw pieces left, and one employee, before assigning work.
+        </div>
+      )}
+
+      <div className="pwt-tabs">
+        {["Open", "Returned", "All"].map((f) => <div key={f} className={"pwt-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>{f}</div>)}
+      </div>
+
+      <div className="pwt-card">
+        {list.length === 0 ? <Empty text="No work assignments here." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Batch</th><th>Task</th><th>Assigned</th><th>Returned</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {list.slice().reverse().map((a) => {
+                const emp = data.employees.find((e) => e.id === a.employeeId);
+                const batch = data.batches.find((b) => b.id === a.batchId);
+                const task = batch?.tasks.find((t) => t.id === a.taskId);
+                return (
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td>
+                    <td><span className="pwt-ledger-id">{batch?.id.slice(-6)}</span></td>
+                    <td>{task?.taskType || "—"}</td>
+                    <td className="pwt-mono">{numFmt(a.assignedQty)}</td>
+                    <td className="pwt-mono">{numFmt(a.returnedQty)}</td>
+                    <td><span className={"pwt-badge " + (a.status === "Returned" ? "completed" : "progress")}>{a.status}</span></td>
+                    <td style={{ textAlign: "right" }}>
+                      {a.status !== "Returned" && (
+                        <button className="pwt-btn ghost sm" onClick={() => setReturnModal({ ...a, returnedQty: a.returnedQty || "" })}>Update return</button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <Modal title="Assign work to employee" onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Batch</label>
+            <select className="pwt-select" value={modal.batchId} onChange={(e) => setModal({ ...modal, batchId: e.target.value, taskId: "" })}>
+              {openBatches.map((b) => {
+                const co = data.companies.find((c) => c.id === b.companyId);
+                return <option key={b.id} value={b.id}>{b.id.slice(-6)} — {co?.name}</option>;
+              })}
+            </select></div>
+          <div className="pwt-field"><label className="pwt-label">Task (raw pieces left shown)</label>
+            <select className="pwt-select" value={modal.taskId} onChange={(e) => setModal({ ...modal, taskId: e.target.value })}>
+              <option value="">Select task…</option>
+              {availableTasks.map((t) => (
+                <option key={t.id} value={t.id}>{t.taskType} — {t.quantity - taskAssigned(selectedBatch, t.id, data.assignments)} left @ {won(t.ratePerPiece)}</option>
+              ))}
+            </select></div>
+          <div className="pwt-field"><label className="pwt-label">Employee</label>
+            <select className="pwt-select" value={modal.employeeId} onChange={(e) => setModal({ ...modal, employeeId: e.target.value })}>
+              {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select></div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Quantity to assign</label>
+              <input className="pwt-input" type="number" min="0" value={modal.assignedQty} onChange={(e) => setModal({ ...modal, assignedQty: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Date</label>
+              <input type="date" className="pwt-input" value={modal.assignedDate} onChange={(e) => setModal({ ...modal, assignedDate: e.target.value })} /></div>
+          </div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Assign</button>
+        </Modal>
+      )}
+
+      {returnModal && (
+        <Modal title="Update returned quantity" onClose={() => setReturnModal(null)}>
+          <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 10 }}>Assigned: <b className="pwt-mono">{numFmt(returnModal.assignedQty)}</b> pieces</div>
+          <div className="pwt-field"><label className="pwt-label">Returned quantity so far</label>
+            <input className="pwt-input" type="number" min="0" max={returnModal.assignedQty} value={returnModal.returnedQty}
+              onChange={(e) => setReturnModal({ ...returnModal, returnedQty: e.target.value })} /></div>
+          <div className="pwt-field"><label className="pwt-label">Return date</label>
+            <input type="date" className="pwt-input" value={returnModal.returnedDate || todayStr()} onChange={(e) => setReturnModal({ ...returnModal, returnedDate: e.target.value })} /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={saveReturn}>Save</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------- payslips --------------------------------------- */
+
+function PayslipsView({ data, setData }) {
+  const [gen, setGen] = useState(null);
+  const [printSlip, setPrintSlip] = useState(null);
+  const printRef = useRef(null);
+
+  const openGen = () => setGen({ employeeId: data.employees[0]?.id || "", periodType: "Month", start: todayStr().slice(0, 7) + "-01", end: todayStr() });
+
+  const previewItems = useMemo(() => {
+    if (!gen || !gen.employeeId) return [];
+    return data.assignments.filter((a) => a.employeeId === gen.employeeId && !a.paid && a.returnedQty > 0 && a.returnedDate >= gen.start && a.returnedDate <= gen.end)
+      .map((a) => {
+        const batch = data.batches.find((b) => b.id === a.batchId);
+        const task = batch?.tasks.find((t) => t.id === a.taskId);
+        return { assignmentId: a.id, batchId: a.batchId, taskType: task?.taskType, qty: a.returnedQty, rate: task?.ratePerPiece || 0, amount: a.returnedQty * (task?.ratePerPiece || 0) };
+      });
+  }, [gen, data]);
+  const previewTotal = previewItems.reduce((s, i) => s + i.amount, 0);
+
+  const generate = () => {
+    if (previewItems.length === 0) { alert("No unpaid returned work found for this employee in the selected period."); return; }
+    const payment = { id: uid("pay"), employeeId: gen.employeeId, periodStart: gen.start, periodEnd: gen.end, items: previewItems, total: previewTotal, generatedDate: todayStr() };
+    setData({
+      ...data,
+      payments: [...data.payments, payment],
+      assignments: data.assignments.map((a) => previewItems.some((i) => i.assignmentId === a.id) ? { ...a, paid: true } : a),
+    });
+    setGen(null);
+    setPrintSlip(payment);
+  };
+
+  const share = (payment) => {
+    const emp = data.employees.find((e) => e.id === payment.employeeId);
+    const text = `Payslip for ${emp?.name}\nPeriod: ${fmtDate(payment.periodStart)} to ${fmtDate(payment.periodEnd)}\nPieces paid: ${payment.items.reduce((s, i) => s + i.qty, 0)}\nTotal: ${won(payment.total)}`;
+    if (navigator.share) {
+      navigator.share({ title: "Payslip", text }).catch(() => {});
+    } else {
+      const phone = (emp?.contact || "").replace(/[^0-9]/g, "");
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank");
+    }
+  };
+
+  return (
+    <div>
+      <Header title="Payslips" subtitle="Generate and share employee payments for a period"
+        action={<button className="pwt-btn accent" onClick={openGen} disabled={data.employees.length === 0}><Plus size={15} /> Generate payslip</button>} />
+
+      <div className="pwt-card">
+        {data.payments.length === 0 ? <Empty text="No payslips generated yet." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Period</th><th>Pieces</th><th>Total</th><th>Generated</th><th></th></tr></thead>
+            <tbody>
+              {data.payments.slice().reverse().map((p) => {
+                const emp = data.employees.find((e) => e.id === p.employeeId);
+                return (
+                  <tr key={p.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td>
+                    <td>{fmtDate(p.periodStart)} → {fmtDate(p.periodEnd)}</td>
+                    <td className="pwt-mono">{numFmt(p.items.reduce((s, i) => s + i.qty, 0))}</td>
+                    <td className="pwt-mono">{won(p.total)}</td>
+                    <td>{fmtDate(p.generatedDate)}</td>
+                    <td style={{ textAlign: "right", display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                      <button className="pwt-icon-btn" onClick={() => setPrintSlip(p)}><Printer size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => share(p)}><Share2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {gen && (
+        <Modal title="Generate payslip" onClose={() => setGen(null)} wide>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Employee</label>
+              <select className="pwt-select" value={gen.employeeId} onChange={(e) => setGen({ ...gen, employeeId: e.target.value })}>
+                {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select></div>
+            <div className="pwt-field"><label className="pwt-label">Period type</label>
+              <select className="pwt-select" value={gen.periodType} onChange={(e) => {
+                const pt = e.target.value; const now = new Date();
+                let start = gen.start, end = todayStr();
+                if (pt === "Week") { const d = new Date(); d.setDate(d.getDate() - 7); start = d.toISOString().slice(0, 10); }
+                if (pt === "Month") { start = todayStr().slice(0, 7) + "-01"; }
+                setGen({ ...gen, periodType: pt, start, end });
+              }}>
+                <option>Week</option><option>Month</option><option>Custom</option>
+              </select></div>
+            <div className="pwt-field"><label className="pwt-label">From</label>
+              <input type="date" className="pwt-input" value={gen.start} onChange={(e) => setGen({ ...gen, start: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">To</label>
+              <input type="date" className="pwt-input" value={gen.end} onChange={(e) => setGen({ ...gen, end: e.target.value })} /></div>
+          </div>
+
+          <div className="pwt-divider" />
+          <div className="pwt-stat-label" style={{ marginBottom: 8 }}>Unpaid returned work in this period</div>
+          {previewItems.length === 0 ? <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Nothing found — try widening the date range.</div> : (
+            <table className="pwt-table">
+              <thead><tr><th>Batch</th><th>Task</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+              <tbody>
+                {previewItems.map((i) => (
+                  <tr key={i.assignmentId}>
+                    <td><span className="pwt-ledger-id">{i.batchId.slice(-6)}</span></td>
+                    <td>{i.taskType}</td>
+                    <td className="pwt-mono">{numFmt(i.qty)}</td>
+                    <td className="pwt-mono">{won(i.rate)}</td>
+                    <td className="pwt-mono">{won(i.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontWeight: 700 }}>
+            <span>Total</span><span className="pwt-mono">{won(previewTotal)}</span>
+          </div>
+          <div className="pwt-divider" />
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={generate} disabled={previewItems.length === 0}>Generate payslip</button>
+        </Modal>
+      )}
+
+      {printSlip && <PrintPayslip data={data} payment={printSlip} onClose={() => setPrintSlip(null)} onShare={() => share(printSlip)} />}
+    </div>
+  );
+}
+
+function PrintPayslip({ data, payment, onClose, onShare }) {
+  const emp = data.employees.find((e) => e.id === payment.employeeId);
+  return (
+    <div className="pwt-modal-overlay pwt-noprint" onClick={onClose}>
+      <div className="pwt-modal wide" onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head pwt-noprint">
+          <div className="pwt-modal-title">Payslip preview</div>
+          <button className="pwt-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="pwt-print-sheet" id="print-area">
+          <h2 style={{ marginBottom: 2 }}>Payslip</h2>
+          <div style={{ color: "#56645f", fontSize: 13, marginBottom: 18 }}>Generated {fmtDate(payment.generatedDate)}</div>
+          <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+            <div><div className="pwt-label">Employee</div><div style={{ fontWeight: 600 }}>{emp?.name}</div></div>
+            <div><div className="pwt-label">Period</div><div>{fmtDate(payment.periodStart)} → {fmtDate(payment.periodEnd)}</div></div>
+          </div>
+          <table className="pwt-table">
+            <thead><tr><th>Batch</th><th>Task</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+            <tbody>
+              {payment.items.map((i) => (
+                <tr key={i.assignmentId}>
+                  <td>{i.batchId.slice(-6)}</td><td>{i.taskType}</td>
+                  <td className="pwt-mono">{numFmt(i.qty)}</td><td className="pwt-mono">{won(i.rate)}</td><td className="pwt-mono">{won(i.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontSize: 17, fontWeight: 700 }}>
+            <span>Total due</span><span className="pwt-mono">{won(payment.total)}</span>
+          </div>
+        </div>
+        <div className="pwt-noprint" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <button className="pwt-btn ghost" onClick={() => window.print()}><Printer size={14} /> Print / Save PDF</button>
+          <button className="pwt-btn accent" onClick={onShare}><Share2 size={14} /> Share to employee</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------- deliveries --------------------------------------- */
+
+function DeliveriesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [printNote, setPrintNote] = useState(null);
+
+  const batchesWithFinished = data.batches.filter((b) => batchStock(b, data.assignments, data.deliveries).finished > 0);
+
+  const openNew = () => setModal({ batchId: batchesWithFinished[0]?.id || "", deliveredQty: "", deliveredDate: todayStr(), ratePerPiece: "" });
+
+  const save = () => {
+    const batch = data.batches.find((b) => b.id === modal.batchId);
+    const finished = batchStock(batch, data.assignments, data.deliveries).finished;
+    const qty = Number(modal.deliveredQty);
+    if (!qty || qty <= 0) { alert("Enter a delivered quantity."); return; }
+    if (qty > finished) { alert(`Only ${finished} finished pieces are available for this batch.`); return; }
+    if (!modal.ratePerPiece) { alert("Enter the rate the company pays per piece."); return; }
+    const revenue = qty * Number(modal.ratePerPiece);
+    const delivery = { id: uid("del"), batchId: modal.batchId, deliveredQty: qty, deliveredDate: modal.deliveredDate, ratePerPiece: Number(modal.ratePerPiece), revenue };
+    setData({ ...data, deliveries: [...data.deliveries, delivery] });
+    setModal(null);
+    setPrintNote(delivery);
+  };
+
+  return (
+    <div>
+      <Header title="Deliveries" subtitle="Send finished goods back to the company and record revenue"
+        action={<button className="pwt-btn accent" onClick={openNew} disabled={batchesWithFinished.length === 0}><Plus size={15} /> New delivery</button>} />
+      {batchesWithFinished.length === 0 && <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>No finished pieces ready to deliver yet.</div>}
+
+      <div className="pwt-card">
+        {data.deliveries.length === 0 ? <Empty text="No deliveries recorded yet." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Batch</th><th>Company</th><th>Delivered</th><th>Rate</th><th>Revenue</th><th>Date</th><th></th></tr></thead>
+            <tbody>
+              {data.deliveries.slice().reverse().map((d) => {
+                const batch = data.batches.find((b) => b.id === d.batchId);
+                const co = data.companies.find((c) => c.id === batch?.companyId);
+                return (
+                  <tr key={d.id}>
+                    <td><span className="pwt-ledger-id">{d.batchId.slice(-6)}</span></td>
+                    <td style={{ fontWeight: 600 }}>{co?.name || "—"}</td>
+                    <td className="pwt-mono">{numFmt(d.deliveredQty)}</td>
+                    <td className="pwt-mono">{won(d.ratePerPiece)}</td>
+                    <td className="pwt-mono">{won(d.revenue)}</td>
+                    <td>{fmtDate(d.deliveredDate)}</td>
+                    <td><button className="pwt-icon-btn" onClick={() => setPrintNote(d)}><Printer size={14} /></button></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <Modal title="Record delivery" onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Batch</label>
+            <select className="pwt-select" value={modal.batchId} onChange={(e) => setModal({ ...modal, batchId: e.target.value })}>
+              {batchesWithFinished.map((b) => {
+                const co = data.companies.find((c) => c.id === b.companyId);
+                const fin = batchStock(b, data.assignments, data.deliveries).finished;
+                return <option key={b.id} value={b.id}>{b.id.slice(-6)} — {co?.name} ({fin} finished)</option>;
+              })}
+            </select></div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Delivered quantity</label>
+              <input className="pwt-input" type="number" min="0" value={modal.deliveredQty} onChange={(e) => setModal({ ...modal, deliveredQty: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Rate paid by company (₩/pc)</label>
+              <input className="pwt-input" type="number" min="0" value={modal.ratePerPiece} onChange={(e) => setModal({ ...modal, ratePerPiece: e.target.value })} /></div>
+          </div>
+          <div className="pwt-field"><label className="pwt-label">Delivery date</label>
+            <input type="date" className="pwt-input" value={modal.deliveredDate} onChange={(e) => setModal({ ...modal, deliveredDate: e.target.value })} /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Record delivery</button>
+        </Modal>
+      )}
+
+      {printNote && <PrintDeliveryNote data={data} delivery={printNote} onClose={() => setPrintNote(null)} />}
+    </div>
+  );
+}
+
+function PrintDeliveryNote({ data, delivery, onClose }) {
+  const batch = data.batches.find((b) => b.id === delivery.batchId);
+  const co = data.companies.find((c) => c.id === batch?.companyId);
+  return (
+    <div className="pwt-modal-overlay pwt-noprint" onClick={onClose}>
+      <div className="pwt-modal wide" onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head pwt-noprint">
+          <div className="pwt-modal-title">Delivery note preview</div>
+          <button className="pwt-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+        <div className="pwt-print-sheet">
+          <h2 style={{ marginBottom: 2 }}>Delivery Note</h2>
+          <div style={{ color: "#56645f", fontSize: 13, marginBottom: 18 }}>Batch {batch?.id.slice(-6)} · {fmtDate(delivery.deliveredDate)}</div>
+          <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+            <div><div className="pwt-label">Company</div><div style={{ fontWeight: 600 }}>{co?.name}</div></div>
+            <div><div className="pwt-label">Delivered quantity</div><div className="pwt-mono">{numFmt(delivery.deliveredQty)} pcs</div></div>
+          </div>
+          <table className="pwt-table">
+            <thead><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+            <tbody><tr><td>Finished pieces, batch {batch?.id.slice(-6)}</td><td className="pwt-mono">{numFmt(delivery.deliveredQty)}</td><td className="pwt-mono">{won(delivery.ratePerPiece)}</td><td className="pwt-mono">{won(delivery.revenue)}</td></tr></tbody>
+          </table>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontSize: 17, fontWeight: 700 }}>
+            <span>Total</span><span className="pwt-mono">{won(delivery.revenue)}</span>
+          </div>
+        </div>
+        <div className="pwt-noprint" style={{ marginTop: 16 }}>
+          <button className="pwt-btn ghost" onClick={() => window.print()}><Printer size={14} /> Print / Save PDF</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------- reports ----------------------------------------- */
+
+function ReportsView({ data }) {
+  const totalRevenue = data.deliveries.reduce((s, d) => s + Number(d.revenue || 0), 0);
+
+  const byCompanyMonth = {};
+  for (const d of data.deliveries) {
+    const batch = data.batches.find((b) => b.id === d.batchId);
+    const co = data.companies.find((c) => c.id === batch?.companyId);
+    const mk = monthKey(d.deliveredDate);
+    const key = `${co?.id}|${mk}`;
+    if (!byCompanyMonth[key]) byCompanyMonth[key] = { company: co?.name || "—", month: mk, revenue: 0, qty: 0 };
+    byCompanyMonth[key].revenue += Number(d.revenue || 0);
+    byCompanyMonth[key].qty += Number(d.deliveredQty || 0);
+  }
+  const rows = Object.values(byCompanyMonth).sort((a, b) => (a.month < b.month ? 1 : -1));
+
+  let totalRaw = 0, totalWip = 0, totalFinished = 0;
+  for (const b of data.batches) {
+    const s = batchStock(b, data.assignments, data.deliveries);
+    totalRaw += s.raw; totalWip += s.wip; totalFinished += s.finished;
+  }
+
+  return (
+    <div>
+      <Header title="Reports" subtitle="Revenue and stock, at a glance" />
+      <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+        <Stat label="Total revenue (all time)" value={won(totalRevenue)} />
+        <Stat label="Total stock in the system" value={`${numFmt(totalRaw + totalWip + totalFinished)} pcs`} sub={`${numFmt(totalRaw)} raw · ${numFmt(totalWip)} WIP · ${numFmt(totalFinished)} finished`} />
+      </div>
+
+      <div className="pwt-card" style={{ marginBottom: 16 }}>
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Company-wise monthly revenue</div>
+        {rows.length === 0 ? <Empty text="No deliveries recorded yet." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Company</th><th>Month</th><th>Pieces delivered</th><th>Revenue</th></tr></thead>
+            <tbody>{rows.map((r, i) => (
+              <tr key={i}><td style={{ fontWeight: 600 }}>{r.company}</td><td>{r.month}</td><td className="pwt-mono">{numFmt(r.qty)}</td><td className="pwt-mono">{won(r.revenue)}</td></tr>
+            ))}</tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="pwt-card">
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Stock status by batch</div>
+        {data.batches.length === 0 ? <Empty text="No batches yet." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Batch</th><th>Company</th><th>Raw</th><th>WIP</th><th>Finished</th><th>Status</th></tr></thead>
+            <tbody>
+              {data.batches.map((b) => {
+                const co = data.companies.find((c) => c.id === b.companyId);
+                const s = batchStock(b, data.assignments, data.deliveries);
+                const status = batchStatus(b, data.assignments);
+                return (
+                  <tr key={b.id}>
+                    <td><span className="pwt-ledger-id">{b.id.slice(-6)}</span></td>
+                    <td style={{ fontWeight: 600 }}>{co?.name || "—"}</td>
+                    <td className="pwt-mono">{numFmt(s.raw)}</td>
+                    <td className="pwt-mono">{numFmt(s.wip)}</td>
+                    <td className="pwt-mono">{numFmt(s.finished)}</td>
+                    <td><span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------- shared bits ------------------------------------- */
+
+function Modal({ title, children, onClose, wide }) {
+  return (
+    <div className="pwt-modal-overlay" onClick={onClose}>
+      <div className={"pwt-modal" + (wide ? " wide" : "")} onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head">
+          <div className="pwt-modal-title">{title}</div>
+          <button className="pwt-close-btn" onClick={onClose}><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Empty({ text }) {
+  return (
+    <div className="pwt-empty">
+      <div className="icon"><AlertTriangle size={26} /></div>
+      {text}
+    </div>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+
+</script>
+</body>
+</html>
