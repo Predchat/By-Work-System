@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>By Work System</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+</head>
+<body style="margin:0;">
+<div id="root"></div>
+<script type="text/babel" data-presets="react">
+
+const { useState, useEffect, useMemo, useRef } = React;
+
+/* --------------------- lightweight inline-SVG icon set (no external deps) --------------------- */
+function makeIcon(children) {
+  return function Icon({ size = 16, color = "currentColor" }) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+        strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {children}
+      </svg>
+    );
+  };
+}
+const Plus = makeIcon(<><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></>);
+const X = makeIcon(<><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></>);
+const Search = makeIcon(<><circle cx="11" cy="11" r="7" /><line x1="21" y1="21" x2="16.2" y2="16.2" /></>);
+const Trash2 = makeIcon(<><line x1="4" y1="7" x2="20" y2="7" /><path d="M6 7v13a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7" /><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3" /></>);
+const Edit2 = makeIcon(<><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>);
+const ChevronRight = makeIcon(<polyline points="9 6 15 12 9 18" />);
+const AlertTriangle = makeIcon(<><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></>);
+const Printer = makeIcon(<><polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" /></>);
+const Share2 = makeIcon(<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.6" y1="10.5" x2="15.4" y2="6.5" /><line x1="8.6" y1="13.5" x2="15.4" y2="17.5" /></>);
+const Boxes = makeIcon(<><path d="M2.5 7 12 3l9.5 4-9.5 4-9.5-4Z" /><path d="M2.5 7v10L12 21l9.5-4V7" /><line x1="12" y1="11" x2="12" y2="21" /></>);
+const LayoutDashboard = makeIcon(<><rect x="3" y="3" width="7" height="9" /><rect x="14" y="3" width="7" height="5" /><rect x="14" y="12" width="7" height="9" /><rect x="3" y="16" width="7" height="5" /></>);
+const Building2 = makeIcon(<><rect x="4" y="3" width="16" height="18" /><line x1="8" y1="7" x2="8" y2="7.01" /><line x1="12" y1="7" x2="12" y2="7.01" /><line x1="16" y1="7" x2="16" y2="7.01" /><line x1="8" y1="11" x2="8" y2="11.01" /><line x1="12" y1="11" x2="12" y2="11.01" /><line x1="16" y1="11" x2="16" y2="11.01" /><line x1="8" y1="15" x2="16" y2="15" /></>);
+const Users = makeIcon(<><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5" /><circle cx="17" cy="8" r="2.7" /><path d="M15.5 13.6c2.9.5 5 3 5 6.4" /></>);
+const Package = makeIcon(<><path d="M21 8 12 3 3 8v8l9 5 9-5V8Z" /><path d="M3 8l9 5 9-5" /><line x1="12" y1="13" x2="12" y2="21" /></>);
+const ClipboardList = makeIcon(<><rect x="5" y="4" width="14" height="17" rx="1.5" /><rect x="9" y="2.5" width="6" height="3" rx="1" /><line x1="8" y1="10" x2="16" y2="10" /><line x1="8" y1="14" x2="16" y2="14" /><line x1="8" y1="18" x2="13" y2="18" /></>);
+const Wallet = makeIcon(<><path d="M3 7a2 2 0 0 1 2-2h13a1 1 0 0 1 1 1v3" /><path d="M3 7v11a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1h-4a2 2 0 1 0 0 4h5" /></>);
+const Truck = makeIcon(<><rect x="1.5" y="6" width="13" height="10" /><path d="M14.5 9.5H18l3 3.5V16h-6.5" /><circle cx="6" cy="18" r="1.8" /><circle cx="16.5" cy="18" r="1.8" /></>);
+const BarChart3 = makeIcon(<><line x1="4" y1="21" x2="4" y2="11" /><line x1="12" y1="21" x2="12" y2="5" /><line x1="20" y1="21" x2="20" y2="14" /></>);
+
+/* --------------- localStorage-backed persistence shim (drop-in for window.storage) --------------- */
+window.storage = {
+  get: async (key) => {
+    const v = localStorage.getItem("bws:" + key);
+    return v === null ? null : { key, value: v, shared: false };
+  },
+  set: async (key, value) => {
+    localStorage.setItem("bws:" + key, value);
+    return { key, value, shared: false };
+  },
+  delete: async (key) => {
+    localStorage.removeItem("bws:" + key);
+    return { key, deleted: true, shared: false };
+  },
+  list: async (prefix) => {
+    const keys = Object.keys(localStorage)
+      .filter((k) => k.startsWith("bws:") && (!prefix || k.slice(4).startsWith(prefix)))
+      .map((k) => k.slice(4));
+    return { keys, shared: false };
+  },
+};
+
+/* ---------------------------------- constants ---------------------------------- */
+
+const STORAGE_KEY = "bws-data-v2";
+
+const BANKS = [
+  "KB Kookmin Bank", "Shinhan Bank", "Woori Bank", "KEB Hana Bank", "NH Nonghyup Bank",
+  "IBK (Industrial Bank of Korea)", "KDB (Korea Development Bank)", "Suhyup Bank",
+  "Kakao Bank", "K Bank", "Toss Bank", "Busan Bank (BNK)", "iM Bank (formerly Daegu Bank)",
+  "Gwangju Bank", "Jeonbuk Bank", "Kyongnam Bank", "Jeju Bank", "Korea Post (우체국)",
+  "Saemaul Geumgo", "Shinhyup (Credit Union)", "Other",
+];
+
+const emptyData = () => ({
+  companies: [],
+  employees: [],
+  items: [],
+  assignments: [],
+  payments: [],
+  deliveries: [],
+  taskTypeHistory: ["Assemble", "Checking", "Assemble + Checking"],
+});
+
+const uid = (prefix) =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+
+const won = (n) =>
+  new Intl.NumberFormat("ko-KR", { style: "currency", currency: "KRW", maximumFractionDigits: 0 }).format(
+    Math.round(n || 0)
+  );
+
+const numFmt = (n) => new Intl.NumberFormat("ko-KR").format(Math.round(n || 0));
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const fmtDate = (d) => (!d ? "—" : new Date(d).toLocaleDateString("en-CA"));
+const monthKey = (d) => (d ? d.slice(0, 7) : "");
+const itemLabel = (item) => `${item.itemName || "Untitled"} · ${item.id.slice(-6)}`;
+
+/* ------------------------------- style injection ------------------------------- */
+
+function GlobalStyle() {
+  return (
+    <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+      .pwt-root {
+        --bg: #eef1f0; --surface: #ffffff; --ink: #17221f; --ink-soft: #56645f;
+        --primary: #14453f; --primary-dark: #0c2e2a; --accent: #c96a30; --accent-soft: #f3e3d4;
+        --success: #2f7a4d; --success-soft: #e2f0e6; --warning: #b7862a; --warning-soft: #f6ecd8;
+        --danger: #b23a2e; --danger-soft: #f5e0dc; --border: #dbe1de; --radius: 10px;
+        background: var(--bg); color: var(--ink); font-family: 'Inter', sans-serif; min-height: 100%; width: 100%;
+      }
+      .pwt-root * { box-sizing: border-box; }
+      .pwt-display { font-family: 'Space Grotesk', sans-serif; }
+      .pwt-mono { font-family: 'JetBrains Mono', monospace; font-variant-numeric: tabular-nums; }
+      .pwt-shell { display: flex; min-height: 100vh; }
+      .pwt-sidebar { width: 216px; flex-shrink: 0; background: var(--primary); color: #eaf1ee; display: flex; flex-direction: column; padding: 20px 12px; gap: 2px; }
+      .pwt-brand { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; letter-spacing: 0.02em; color: #fff; padding: 4px 10px 18px 10px; display: flex; align-items: center; gap: 8px; }
+      .pwt-brand .tag { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--accent); background: rgba(201,106,48,0.18); padding: 2px 6px; border-radius: 4px; letter-spacing: 0.05em; }
+      .pwt-navitem { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; color: #cfe0d8; font-size: 13.5px; font-weight: 500; cursor: pointer; border: none; background: transparent; width: 100%; text-align: left; transition: background 0.12s; }
+      .pwt-navitem:hover { background: rgba(255,255,255,0.07); color: #fff; }
+      .pwt-navitem.active { background: var(--accent); color: #fff; }
+      .pwt-navitem .idx { font-family: 'JetBrains Mono', monospace; font-size: 10px; opacity: 0.55; width: 16px; }
+      .pwt-main { flex: 1; min-width: 0; padding: 28px 34px 60px 34px; }
+      .pwt-header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 22px; flex-wrap: wrap; gap: 10px; }
+      .pwt-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 22px; color: var(--primary-dark); }
+      .pwt-subtitle { color: var(--ink-soft); font-size: 13px; margin-top: 3px; }
+      .pwt-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; box-shadow: 0 1px 2px rgba(20,30,25,0.03); }
+      .pwt-grid { display: grid; gap: 14px; }
+      .pwt-grid-4 { grid-template-columns: repeat(4, 1fr); }
+      .pwt-grid-3 { grid-template-columns: repeat(3, 1fr); }
+      .pwt-grid-2 { grid-template-columns: repeat(2, 1fr); }
+      @media (max-width: 980px) { .pwt-grid-4, .pwt-grid-3, .pwt-grid-2 { grid-template-columns: 1fr 1fr; } }
+      .pwt-stat-label { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); font-weight: 600; }
+      .pwt-stat-value { font-family: 'JetBrains Mono', monospace; font-size: 24px; font-weight: 700; color: var(--primary-dark); margin-top: 6px; }
+      .pwt-stat-sub { font-size: 12px; color: var(--ink-soft); margin-top: 4px; }
+      .pwt-btn { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px; border: 1px solid transparent; cursor: pointer; background: var(--primary); color: #fff; transition: filter 0.12s; font-family: 'Inter', sans-serif; }
+      .pwt-btn:hover { filter: brightness(1.1); }
+      .pwt-btn.accent { background: var(--accent); }
+      .pwt-btn.ghost { background: transparent; color: var(--primary); border-color: var(--border); }
+      .pwt-btn.ghost:hover { background: #f2f4f3; }
+      .pwt-btn.danger { background: var(--danger); }
+      .pwt-btn.sm { padding: 5px 10px; font-size: 12px; }
+      .pwt-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+      .pwt-input, .pwt-select { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 13.5px; font-family: 'Inter', sans-serif; background: #fff; color: var(--ink); }
+      .pwt-input:focus, .pwt-select:focus { outline: 2px solid var(--primary); outline-offset: 0; }
+      .pwt-label { font-size: 12px; font-weight: 600; color: var(--ink-soft); margin-bottom: 5px; display: block; }
+      .pwt-field { margin-bottom: 12px; }
+      .pwt-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      .pwt-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); padding: 8px 10px; border-bottom: 1.5px solid var(--border); font-weight: 700; }
+      .pwt-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+      .pwt-table tr:last-child td { border-bottom: none; }
+      .pwt-table tr:hover td { background: #f8faf9; }
+      .pwt-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.03em; }
+      .pwt-badge.pending { background: var(--warning-soft); color: var(--warning); }
+      .pwt-badge.completed { background: var(--success-soft); color: var(--success); }
+      .pwt-badge.progress { background: #e4e9f3; color: #3b4f8c; }
+      .pwt-empty { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
+      .pwt-empty .icon { opacity: 0.35; margin-bottom: 10px; }
+      .pwt-modal-overlay { position: fixed; inset: 0; background: rgba(15,25,20,0.45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+      .pwt-modal { background: #fff; border-radius: 12px; padding: 24px; width: 100%; max-width: 520px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 50px rgba(0,0,0,0.25); }
+      .pwt-modal.wide { max-width: 760px; }
+      .pwt-modal.narrow { max-width: 420px; }
+      .pwt-modal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+      .pwt-modal-title { font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 17px; color: var(--primary-dark); }
+      .pwt-close-btn { background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 4px; }
+      .pwt-tabs { display: flex; gap: 4px; border-bottom: 1.5px solid var(--border); margin-bottom: 18px; }
+      .pwt-tab { padding: 8px 14px; font-size: 13px; font-weight: 600; color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1.5px; }
+      .pwt-tab.active { color: var(--primary-dark); border-bottom-color: var(--accent); }
+      .pwt-search { position: relative; max-width: 260px; }
+      .pwt-search svg { position: absolute; left: 9px; top: 9px; color: var(--ink-soft); }
+      .pwt-search input { padding-left: 30px; }
+      .pwt-divider { height: 1px; background: var(--border); margin: 16px 0; }
+      .pwt-ledger-id { font-family: 'JetBrains Mono', monospace; font-size: 11.5px; background: #f1f4f2; padding: 2px 7px; border-radius: 5px; color: var(--primary-dark); letter-spacing: 0.02em; }
+      .pwt-print-sheet { background: #fff; padding: 34px; font-family: 'Inter', sans-serif; color: #14201c; max-width: 640px; margin: 0 auto; }
+      .pwt-print-sheet h2 { font-family: 'Space Grotesk', sans-serif; }
+      @media print { .pwt-noprint { display: none !important; } .pwt-root, body { background: #fff !important; } }
+      .pwt-taskrow { display: grid; grid-template-columns: 1fr 90px 120px 32px; gap: 8px; align-items: end; margin-bottom: 8px; }
+      .pwt-icon-btn { background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 4px; border-radius: 5px; }
+      .pwt-icon-btn:hover { background: #f0f2f1; color: var(--ink); }
+      .pwt-inline-edit { display: flex; align-items: center; gap: 6px; }
+      .pwt-check-row { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--ink); margin: 10px 0; }
+      .pwt-note { font-size: 12px; color: var(--ink-soft); background: #f4f6f5; border: 1px solid var(--border); border-radius: 7px; padding: 8px 10px; margin-bottom: 10px; }
+      .pwt-filterbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-bottom: 14px; }
+      .pwt-filterbar > div { min-width: 150px; flex: 1 1 150px; }
+      .pwt-filterbar .pwt-fb-narrow { flex: 0 1 130px; min-width: 110px; }
+    `}</style>
+  );
+}
+
+/* ---------------------------------- storage hook -------------------------------- */
+
+function useAppData() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const loadedOnce = useRef(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await window.storage.get(STORAGE_KEY, false);
+        setData(res && res.value ? JSON.parse(res.value) : emptyData());
+      } catch (e) {
+        setData(emptyData());
+      } finally {
+        setLoading(false);
+        loadedOnce.current = true;
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!loadedOnce.current || data === null) return;
+    (async () => {
+      try { await window.storage.set(STORAGE_KEY, JSON.stringify(data), false); }
+      catch (e) { console.error("save failed", e); }
+    })();
+  }, [data]);
+
+  return [data, setData, loading];
+}
+
+/* --------------------------------- computations --------------------------------- */
+
+function taskAssigned(item, taskId, assignments) {
+  return assignments.filter((a) => a.itemId === item.id && a.taskId === taskId).reduce((s, a) => s + Number(a.assignedQty || 0), 0);
+}
+function taskReturned(item, taskId, assignments) {
+  return assignments.filter((a) => a.itemId === item.id && a.taskId === taskId).reduce((s, a) => s + Number(a.returnedQty || 0), 0);
+}
+function itemTotalQty(item) {
+  return item.tasks.reduce((s, t) => s + Number(t.quantity || 0), 0);
+}
+function itemStock(item, assignments, deliveries) {
+  let raw = 0, wip = 0, returnedTotal = 0;
+  for (const t of item.tasks) {
+    const assigned = taskAssigned(item, t.id, assignments);
+    const returned = taskReturned(item, t.id, assignments);
+    raw += Math.max(t.quantity - assigned, 0);
+    wip += Math.max(assigned - returned, 0);
+    returnedTotal += returned;
+  }
+  const delivered = deliveries.filter((d) => d.itemId === item.id).reduce((s, d) => s + Number(d.deliveredQty || 0), 0);
+  const finished = Math.max(returnedTotal - delivered, 0);
+  return { raw, wip, finished, returnedTotal, delivered };
+}
+function itemStatus(item, deliveries) {
+  return deliveries.some((d) => d.itemId === item.id) ? "Completed" : "Pending";
+}
+function assignmentAmount(a, data) {
+  const item = data.items.find((i) => i.id === a.itemId);
+  const task = item?.tasks.find((t) => t.id === a.taskId);
+  const rate = task ? Number(task.ratePerPiece || 0) : 0;
+  return Number(a.returnedQty || 0) * rate;
+}
+
+/* ------------------------------------ shell ------------------------------------- */
+
+const NAV = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "companies", label: "Companies", icon: Building2 },
+  { id: "employees", label: "Employees", icon: Users },
+  { id: "items", label: "Items", icon: Package },
+  { id: "assignments", label: "Work Assignment", icon: ClipboardList },
+  { id: "payslips", label: "Payslips", icon: Wallet },
+  { id: "deliveries", label: "Deliveries", icon: Truck },
+  { id: "reports", label: "Reports", icon: BarChart3 },
+];
+
+function App() {
+  const [data, setData, loading] = useAppData();
+  const [view, setView] = useState("dashboard");
+  const [itemDetailId, setItemDetailId] = useState(null);
+
+  if (loading || data === null) {
+    return (
+      <div className="pwt-root" style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 400 }}>
+        <div className="pwt-mono" style={{ color: "#56645f" }}>Loading workshop ledger…</div>
+      </div>
+    );
+  }
+
+  const loadSample = () => {
+    const companyId = uid("co");
+    const empId1 = uid("emp");
+    const empId2 = uid("emp");
+    const taskA = uid("task");
+    const taskB = uid("task");
+    const itemId = uid("item");
+    setData({
+      ...data,
+      companies: [...data.companies, { id: companyId, name: "Hanul Rubber Co.", contact: "010-2222-3333" }],
+      employees: [
+        ...data.employees,
+        { id: empId1, name: "Kim Ji-woo", contact: "010-1111-2222", phone2: "", address: "", idNumber: "", bankName: "KB Kookmin Bank", bankOther: "", accountHolder: "Kim Ji-woo", accountNumber: "123-456-789012" },
+        { id: empId2, name: "Lee Soo-jin", contact: "010-4444-5555", phone2: "", address: "", idNumber: "", bankName: "Shinhan Bank", bankOther: "", accountHolder: "Lee Soo-jin", accountNumber: "110-222-333444" },
+      ],
+      items: [
+        ...data.items,
+        {
+          id: itemId, companyId, itemName: "Rubber Grommets Batch #1",
+          receivedDate: todayStr(), dueDate: todayStr(),
+          tasks: [
+            { id: taskA, taskType: "Checking", quantity: 500, ratePerPiece: 150 },
+            { id: taskB, taskType: "Assemble", quantity: 500, ratePerPiece: 220 },
+          ],
+        },
+      ],
+    });
+  };
+
+  const openItem = (id) => { setItemDetailId(id); setView("itemDetail"); };
+
+  return (
+    <div className="pwt-root">
+      <GlobalStyle />
+      <div className="pwt-shell pwt-noprint">
+        <aside className="pwt-sidebar">
+          <div className="pwt-brand"><Boxes size={18} color="#c96a30" /> By Work System <span className="tag">v0.2</span></div>
+          {NAV.map((n, i) => (
+            <button key={n.id} className={"pwt-navitem" + (view === n.id || (n.id === "items" && view === "itemDetail") ? " active" : "")} onClick={() => setView(n.id)}>
+              <span className="idx">{String(i + 1).padStart(2, "0")}</span><n.icon size={15} />{n.label}
+            </button>
+          ))}
+          <div style={{ flex: 1 }} />
+          {data.companies.length === 0 && (
+            <button className="pwt-navitem" style={{ color: "#c96a30" }} onClick={loadSample}><span className="idx">＋</span>Load sample data</button>
+          )}
+        </aside>
+        <main className="pwt-main">
+          {view === "dashboard" && <Dashboard data={data} goItem={openItem} />}
+          {view === "companies" && <CompaniesView data={data} setData={setData} />}
+          {view === "employees" && <EmployeesView data={data} setData={setData} />}
+          {view === "items" && <ItemsView data={data} setData={setData} openItem={openItem} />}
+          {view === "itemDetail" && <ItemDetail data={data} setData={setData} itemId={itemDetailId} back={() => setView("items")} />}
+          {view === "assignments" && <AssignmentsView data={data} setData={setData} />}
+          {view === "payslips" && <PayslipsView data={data} setData={setData} />}
+          {view === "deliveries" && <DeliveriesView data={data} setData={setData} />}
+          {view === "reports" && <ReportsView data={data} />}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------- dashboard ------------------------------------ */
+
+function Dashboard({ data, goItem }) {
+  const pendingItems = data.items.filter((i) => itemStatus(i, data.deliveries) === "Pending");
+  const totalRevenue = data.deliveries.reduce((s, d) => s + Number(d.revenue || 0), 0);
+  const thisMonth = monthKey(todayStr());
+  const monthRevenue = data.deliveries.filter((d) => monthKey(d.deliveredDate) === thisMonth).reduce((s, d) => s + Number(d.revenue || 0), 0);
+  const unpaidWages = data.assignments.filter((a) => !a.paid && Number(a.returnedQty) > 0).reduce((s, a) => s + assignmentAmount(a, data), 0);
+
+  let totalRaw = 0, totalWip = 0, totalFinished = 0;
+  for (const it of data.items) { const s = itemStock(it, data.assignments, data.deliveries); totalRaw += s.raw; totalWip += s.wip; totalFinished += s.finished; }
+
+  return (
+    <div>
+      <Header title="Dashboard" subtitle="Snapshot of the workshop right now" />
+      <div className="pwt-grid pwt-grid-4">
+        <Stat label="Pending items" value={pendingItems.length} sub={`${data.items.length} total`} />
+        <Stat label="Revenue this month" value={won(monthRevenue)} sub="from deliveries" />
+        <Stat label="Total revenue" value={won(totalRevenue)} sub="all time" />
+        <Stat label="Unpaid wages" value={won(unpaidWages)} sub="owed to employees" />
+      </div>
+      <div className="pwt-grid pwt-grid-2" style={{ marginTop: 16 }}>
+        <div className="pwt-card">
+          <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Stock overview (pieces)</div>
+          <StockLegendRow label="Raw material" value={totalRaw} cls="raw" />
+          <StockLegendRow label="With employees (WIP)" value={totalWip} cls="wip" />
+          <StockLegendRow label="Finished, ready to deliver" value={totalFinished} cls="fin" />
+        </div>
+        <div className="pwt-card">
+          <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Pending items</div>
+          {pendingItems.length === 0 && <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>No pending items — all caught up.</div>}
+          {pendingItems.slice(0, 6).map((it) => {
+            const co = data.companies.find((c) => c.id === it.companyId);
+            return (
+              <div key={it.id} onClick={() => goItem(it.id)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid var(--border)", cursor: "pointer", fontSize: 13 }}>
+                <div><span style={{ fontWeight: 600 }}>{it.itemName}</span><span style={{ color: "var(--ink-soft)" }}> · {co?.name || "—"} · due {fmtDate(it.dueDate)}</span></div>
+                <ChevronRight size={15} color="var(--ink-soft)" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StockLegendRow({ label, value, cls }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ width: 9, height: 9, borderRadius: 2, background: cls === "raw" ? "#9fb0aa" : cls === "wip" ? "var(--warning)" : "var(--success)" }} />{label}
+        </span>
+        <span className="pwt-mono" style={{ fontWeight: 700 }}>{numFmt(value)}</span>
+      </div>
+    </div>
+  );
+}
+function Header({ title, subtitle, action }) {
+  return (
+    <div className="pwt-header">
+      <div><div className="pwt-title">{title}</div>{subtitle && <div className="pwt-subtitle">{subtitle}</div>}</div>
+      {action}
+    </div>
+  );
+}
+function Stat({ label, value, sub }) {
+  return (
+    <div className="pwt-card">
+      <div className="pwt-stat-label">{label}</div>
+      <div className="pwt-stat-value">{value}</div>
+      {sub && <div className="pwt-stat-sub">{sub}</div>}
+    </div>
+  );
+}
+
+/* ---------------------------------- companies ------------------------------------ */
+
+function CompaniesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [q, setQ] = useState("");
+  const save = () => {
+    if (!modal.name?.trim()) return;
+    if (modal.editId) setData({ ...data, companies: data.companies.map((c) => c.id === modal.editId ? { ...c, name: modal.name, contact: modal.contact } : c) });
+    else setData({ ...data, companies: [...data.companies, { id: uid("co"), name: modal.name, contact: modal.contact || "" }] });
+    setModal(null);
+  };
+  const del = (id) => {
+    if (data.items.some((i) => i.companyId === id)) { alert("This company has items linked to it and can't be deleted."); return; }
+    setData({ ...data, companies: data.companies.filter((c) => c.id !== id) });
+  };
+  const filtered = data.companies.filter((c) => c.name.toLowerCase().includes(q.toLowerCase()));
+  return (
+    <div>
+      <Header title="Companies" subtitle="Businesses supplying material and receiving finished goods" action={<button className="pwt-btn accent" onClick={() => setModal({ name: "", contact: "" })}><Plus size={15} /> Add company</button>} />
+      <div className="pwt-card">
+        <div className="pwt-search" style={{ marginBottom: 14 }}><Search size={14} /><input className="pwt-input" placeholder="Search companies…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        {filtered.length === 0 ? <Empty text="No companies yet. Add the first one to get started." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Company</th><th>Contact</th><th>Items</th><th></th></tr></thead>
+            <tbody>
+              {filtered.map((c) => (
+                <tr key={c.id}>
+                  <td style={{ fontWeight: 600 }}>{c.name}</td><td>{c.contact || "—"}</td>
+                  <td>{data.items.filter((i) => i.companyId === c.id).length}</td>
+                  <td style={{ textAlign: "right" }}>
+                    <button className="pwt-icon-btn" onClick={() => setModal({ ...c, editId: c.id })}><Edit2 size={14} /></button>
+                    <button className="pwt-icon-btn" onClick={() => del(c.id)}><Trash2 size={14} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modal && (
+        <Modal title={modal.editId ? "Edit company" : "Add company"} onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Company name</label><input className="pwt-input" value={modal.name} onChange={(e) => setModal({ ...modal, name: e.target.value })} autoFocus /></div>
+          <div className="pwt-field"><label className="pwt-label">Contact</label><input className="pwt-input" value={modal.contact} onChange={(e) => setModal({ ...modal, contact: e.target.value })} placeholder="Phone / email" /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Save company</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ---------------------------------- employees ------------------------------------ */
+
+function EmployeesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [q, setQ] = useState("");
+  const blank = () => ({ name: "", contact: "", phone2: "", address: "", idNumber: "", bankName: BANKS[0], bankOther: "", accountHolder: "", accountNumber: "" });
+
+  const save = () => {
+    if (!modal.name?.trim()) return;
+    const rec = { ...modal };
+    delete rec.editId;
+    if (modal.editId) setData({ ...data, employees: data.employees.map((e) => e.id === modal.editId ? { ...rec, id: modal.editId } : e) });
+    else setData({ ...data, employees: [...data.employees, { ...rec, id: uid("emp") }] });
+    setModal(null);
+  };
+  const del = (id) => {
+    if (data.assignments.some((a) => a.employeeId === id)) { alert("This employee has work assignments linked to them and can't be deleted."); return; }
+    setData({ ...data, employees: data.employees.filter((e) => e.id !== id) });
+  };
+  const filtered = data.employees.filter((e) => e.name.toLowerCase().includes(q.toLowerCase()));
+
+  return (
+    <div>
+      <Header title="Employees" subtitle="People doing piecework from home" action={<button className="pwt-btn accent" onClick={() => setModal(blank())}><Plus size={15} /> Add employee</button>} />
+      <div className="pwt-card">
+        <div className="pwt-search" style={{ marginBottom: 14 }}><Search size={14} /><input className="pwt-input" placeholder="Search employees…" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+        {filtered.length === 0 ? <Empty text="No employees yet. Add the first one to get started." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Name</th><th>Contact</th><th>Bank</th><th>Unpaid earnings</th><th></th></tr></thead>
+            <tbody>
+              {filtered.map((e) => {
+                const unpaid = data.assignments.filter((a) => a.employeeId === e.id && !a.paid && a.returnedQty > 0).reduce((s, a) => s + assignmentAmount(a, data), 0);
+                return (
+                  <tr key={e.id}>
+                    <td style={{ fontWeight: 600 }}>{e.name}</td><td>{e.contact || "—"}</td>
+                    <td>{e.bankName === "Other" ? (e.bankOther || "Other") : (e.bankName || "—")}</td>
+                    <td className="pwt-mono">{won(unpaid)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button className="pwt-icon-btn" onClick={() => setModal({ ...blank(), ...e, editId: e.id })}><Edit2 size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => del(e.id)}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modal && (
+        <Modal title={modal.editId ? "Edit employee" : "Add employee"} onClose={() => setModal(null)} wide>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Full name</label><input className="pwt-input" value={modal.name} onChange={(e) => setModal({ ...modal, name: e.target.value })} autoFocus /></div>
+            <div className="pwt-field"><label className="pwt-label">ID number (optional)</label><input className="pwt-input" value={modal.idNumber} onChange={(e) => setModal({ ...modal, idNumber: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Phone (primary, for WhatsApp / KakaoTalk)</label><input className="pwt-input" value={modal.contact} onChange={(e) => setModal({ ...modal, contact: e.target.value })} placeholder="e.g. 82101234567" /></div>
+            <div className="pwt-field"><label className="pwt-label">Phone (secondary)</label><input className="pwt-input" value={modal.phone2} onChange={(e) => setModal({ ...modal, phone2: e.target.value })} /></div>
+          </div>
+          <div className="pwt-field"><label className="pwt-label">Address</label><input className="pwt-input" value={modal.address} onChange={(e) => setModal({ ...modal, address: e.target.value })} /></div>
+          <div className="pwt-divider" />
+          <div className="pwt-stat-label" style={{ marginBottom: 8 }}>Bank details</div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Bank</label>
+              <select className="pwt-select" value={modal.bankName} onChange={(e) => setModal({ ...modal, bankName: e.target.value })}>
+                {BANKS.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select></div>
+            {modal.bankName === "Other" && (
+              <div className="pwt-field"><label className="pwt-label">Bank name (specify)</label><input className="pwt-input" value={modal.bankOther} onChange={(e) => setModal({ ...modal, bankOther: e.target.value })} /></div>
+            )}
+            <div className="pwt-field"><label className="pwt-label">Account holder name</label><input className="pwt-input" value={modal.accountHolder} onChange={(e) => setModal({ ...modal, accountHolder: e.target.value })} placeholder="May differ from employee name" /></div>
+            <div className="pwt-field"><label className="pwt-label">Account number</label><input className="pwt-input" value={modal.accountNumber} onChange={(e) => setModal({ ...modal, accountNumber: e.target.value })} /></div>
+          </div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Save employee</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------------ items ------------------------------------ */
+
+function ItemsView({ data, setData, openItem }) {
+  const [modal, setModal] = useState(null);
+  const [filter, setFilter] = useState("All");
+  const [fSearch, setFSearch] = useState("");
+  const [fCompany, setFCompany] = useState("All");
+  const [fDueFrom, setFDueFrom] = useState("");
+  const [fDueTo, setFDueTo] = useState("");
+
+  const openNew = () => setModal({
+    itemName: "", companyId: data.companies[0]?.id || "", receivedDate: todayStr(), dueDate: todayStr(),
+    taskType: data.taskTypeHistory[0] || "Assemble", quantity: "", ratePerPiece: "",
+  });
+
+  const save = () => {
+    if (!modal.companyId) { alert("Select a company first."); return; }
+    if (!modal.itemName?.trim()) { alert("Enter an item name."); return; }
+    if (!modal.taskType?.trim() || !modal.quantity || !modal.ratePerPiece) { alert("Fill in task type, quantity and rate."); return; }
+    const task = { id: uid("task"), taskType: modal.taskType.trim(), quantity: Number(modal.quantity), ratePerPiece: Number(modal.ratePerPiece) };
+    const newTypes = data.taskTypeHistory.includes(task.taskType) ? [] : [task.taskType];
+    setData({
+      ...data,
+      items: [...data.items, { id: uid("item"), itemName: modal.itemName.trim(), companyId: modal.companyId, receivedDate: modal.receivedDate, dueDate: modal.dueDate, tasks: [task] }],
+      taskTypeHistory: [...data.taskTypeHistory, ...newTypes],
+    });
+    setModal(null);
+  };
+
+  const clearFilters = () => { setFSearch(""); setFCompany("All"); setFDueFrom(""); setFDueTo(""); setFilter("All"); };
+  const visible = data.items.filter((it) =>
+    (filter === "All" || itemStatus(it, data.deliveries) === filter) &&
+    (fCompany === "All" || it.companyId === fCompany) &&
+    (fSearch.trim() === "" || it.itemName.toLowerCase().includes(fSearch.trim().toLowerCase()) || it.id.toLowerCase().includes(fSearch.trim().toLowerCase())) &&
+    (!fDueFrom || it.dueDate >= fDueFrom) && (!fDueTo || it.dueDate <= fDueTo)
+  );
+
+  return (
+    <div>
+      <Header title="Items" subtitle="Orders of pieces received from companies" action={<button className="pwt-btn accent" onClick={openNew} disabled={data.companies.length === 0}><Plus size={15} /> New item</button>} />
+      {data.companies.length === 0 && <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>Add a company first before creating an item.</div>}
+      <div className="pwt-tabs">{["All", "Pending", "Completed"].map((f) => <div key={f} className={"pwt-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>{f}</div>)}</div>
+      <div className="pwt-filterbar">
+        <div><label className="pwt-label">Search item / code</label><input className="pwt-input" value={fSearch} onChange={(e) => setFSearch(e.target.value)} placeholder="Name or code…" /></div>
+        <div><label className="pwt-label">Company</label>
+          <select className="pwt-select" value={fCompany} onChange={(e) => setFCompany(e.target.value)}>
+            <option value="All">All companies</option>
+            {data.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Due from</label><input type="date" className="pwt-input" value={fDueFrom} onChange={(e) => setFDueFrom(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Due to</label><input type="date" className="pwt-input" value={fDueTo} onChange={(e) => setFDueTo(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><button className="pwt-btn ghost sm" onClick={clearFilters}>Clear filters</button></div>
+      </div>
+      <div className="pwt-card">
+        {visible.length === 0 ? <Empty text="No items match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Item</th><th>Company</th><th>Received</th><th>Due</th><th>Quantity</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {visible.map((it) => {
+                const co = data.companies.find((c) => c.id === it.companyId);
+                const status = itemStatus(it, data.deliveries);
+                return (
+                  <tr key={it.id} style={{ cursor: "pointer" }} onClick={() => openItem(it.id)}>
+                    <td style={{ fontWeight: 600 }}>{it.itemName} <span className="pwt-ledger-id">{it.id.slice(-6)}</span></td>
+                    <td>{co?.name || "—"}</td><td>{fmtDate(it.receivedDate)}</td><td>{fmtDate(it.dueDate)}</td>
+                    <td className="pwt-mono">{numFmt(itemTotalQty(it))}</td>
+                    <td><span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span></td>
+                    <td><ChevronRight size={14} color="var(--ink-soft)" /></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modal && (
+        <Modal title="New item" onClose={() => setModal(null)} wide>
+          <div className="pwt-field"><label className="pwt-label">Item name</label><input className="pwt-input" list="item-name-options" value={modal.itemName} onChange={(e) => setModal({ ...modal, itemName: e.target.value })} placeholder="e.g. Rubber Grommets — Lot 1" autoFocus />
+            <datalist id="item-name-options">{[...new Set(data.items.map((i) => i.itemName))].map((n) => <option key={n} value={n} />)}</datalist>
+          </div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Company</label>
+              <select className="pwt-select" value={modal.companyId} onChange={(e) => setModal({ ...modal, companyId: e.target.value })}>
+                {data.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select></div>
+            <div />
+            <div className="pwt-field"><label className="pwt-label">Received date</label><input type="date" className="pwt-input" value={modal.receivedDate} onChange={(e) => setModal({ ...modal, receivedDate: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Due date</label><input type="date" className="pwt-input" value={modal.dueDate} onChange={(e) => setModal({ ...modal, dueDate: e.target.value })} /></div>
+          </div>
+          <div className="pwt-divider" />
+          <div className="pwt-grid pwt-grid-3">
+            <div className="pwt-field"><label className="pwt-label">Task type</label>
+              <input className="pwt-input" list="task-type-options" value={modal.taskType} onChange={(e) => setModal({ ...modal, taskType: e.target.value })} placeholder="Type or pick…" /></div>
+            <div className="pwt-field"><label className="pwt-label">Quantity (pcs)</label><input className="pwt-input" type="number" min="0" value={modal.quantity} onChange={(e) => setModal({ ...modal, quantity: e.target.value })} placeholder="0" /></div>
+            <div className="pwt-field"><label className="pwt-label">Rate/pc (₩)</label><input className="pwt-input" type="number" min="0" value={modal.ratePerPiece} onChange={(e) => setModal({ ...modal, ratePerPiece: e.target.value })} placeholder="0" /></div>
+          </div>
+          <datalist id="task-type-options">{data.taskTypeHistory.map((t) => <option key={t} value={t} />)}</datalist>
+          <div className="pwt-divider" />
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Create item</button>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function ItemDetail({ data, setData, itemId, back }) {
+  const item = data.items.find((i) => i.id === itemId);
+  const [editTask, setEditTask] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+
+  if (!item) return <div>Item not found. <button className="pwt-btn ghost" onClick={back}>Back</button></div>;
+  const co = data.companies.find((c) => c.id === item.companyId);
+  const status = itemStatus(item, data.deliveries);
+  const stock = itemStock(item, data.assignments, data.deliveries);
+
+  const applyTaskEdit = () => {
+    const newType = editTask.taskType?.trim() || "Untitled task";
+    setData({
+      ...data,
+      items: data.items.map((it) => it.id !== item.id ? it : { ...it, tasks: it.tasks.map((t) => t.id === editTask.id ? { ...t, taskType: newType, quantity: Number(editTask.quantity), ratePerPiece: Number(editTask.ratePerPiece) } : t) }),
+      taskTypeHistory: data.taskTypeHistory.includes(newType) ? data.taskTypeHistory : [...data.taskTypeHistory, newType],
+    });
+    setEditTask(null);
+  };
+
+  return (
+    <div>
+      <button className="pwt-btn ghost sm" style={{ marginBottom: 12 }} onClick={back}>← Back to items</button>
+      <Header title={item.itemName} subtitle={`${co?.name || "—"} · ${item.id.slice(-6)} · received ${fmtDate(item.receivedDate)} · due ${fmtDate(item.dueDate)}`} action={<span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span>} />
+      <div className="pwt-grid pwt-grid-3" style={{ marginBottom: 16 }}>
+        <Stat label="Raw (unassigned)" value={numFmt(stock.raw)} />
+        <Stat label="With employees (WIP)" value={numFmt(stock.wip)} />
+        <Stat label="Finished, undelivered" value={numFmt(stock.finished)} />
+      </div>
+      <div className="pwt-card">
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Tasks in this item</div>
+        <table className="pwt-table">
+          <thead><tr><th>Task type</th><th>Quantity</th><th>Rate/pc</th><th>Assigned</th><th>Returned</th><th>Raw left</th><th></th></tr></thead>
+          <tbody>
+            {item.tasks.map((t) => {
+              const assigned = taskAssigned(item, t.id, data.assignments);
+              const returned = taskReturned(item, t.id, data.assignments);
+              return (
+                <tr key={t.id}>
+                  <td style={{ fontWeight: 600 }}>{t.taskType}</td>
+                  <td className="pwt-mono">{numFmt(t.quantity)}</td>
+                  <td className="pwt-mono">{won(t.ratePerPiece)}</td>
+                  <td className="pwt-mono">{numFmt(assigned)}</td>
+                  <td className="pwt-mono">{numFmt(returned)}</td>
+                  <td className="pwt-mono">{numFmt(Math.max(t.quantity - assigned, 0))}</td>
+                  <td><button className="pwt-icon-btn" onClick={() => setEditTask({ ...t })}><Edit2 size={14} /></button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="pwt-card" style={{ marginTop: 14 }}>
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Work assignments for this item</div>
+        {data.assignments.filter((a) => a.itemId === item.id).length === 0 ? <Empty text="No work assigned yet — go to Work Assignment to assign pieces." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Task</th><th>Assigned</th><th>Returned</th><th>Status</th></tr></thead>
+            <tbody>
+              {data.assignments.filter((a) => a.itemId === item.id).map((a) => {
+                const emp = data.employees.find((e) => e.id === a.employeeId);
+                const task = item.tasks.find((t) => t.id === a.taskId);
+                return (
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td><td>{task?.taskType || "—"}</td>
+                    <td className="pwt-mono">{numFmt(a.assignedQty)}</td><td className="pwt-mono">{numFmt(a.returnedQty)}</td>
+                    <td><span className={"pwt-badge " + (a.status === "Returned" ? "completed" : "progress")}>{a.status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {editTask && (
+        <Modal title={`Edit task — ${editTask.taskType}`} onClose={() => setEditTask(null)} narrow>
+          <div className="pwt-note">Editing this can throw off stock calculations already assigned to employees. Only change it if the real details differ from what was entered.</div>
+          <div className="pwt-field"><label className="pwt-label">Task type</label>
+            <input className="pwt-input" list="task-type-options-edit" value={editTask.taskType} onChange={(e) => setEditTask({ ...editTask, taskType: e.target.value })} />
+            <datalist id="task-type-options-edit">{data.taskTypeHistory.map((t) => <option key={t} value={t} />)}</datalist>
+          </div>
+          <div className="pwt-field"><label className="pwt-label">Quantity (pcs)</label><input className="pwt-input" type="number" value={editTask.quantity} onChange={(e) => setEditTask({ ...editTask, quantity: e.target.value })} /></div>
+          <div className="pwt-field"><label className="pwt-label">Rate per piece (₩)</label><input className="pwt-input" type="number" value={editTask.ratePerPiece} onChange={(e) => setEditTask({ ...editTask, ratePerPiece: e.target.value })} /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={() => setConfirm({ message: "Really update this task's type, quantity and rate?", onYes: () => { applyTaskEdit(); setConfirm(null); } })}>Save changes</button>
+        </Modal>
+      )}
+      {confirm && <ConfirmDialog message={confirm.message} onYes={confirm.onYes} onNo={() => setConfirm(null)} />}
+    </div>
+  );
+}
+
+/* --------------------------------- assignments ------------------------------------ */
+
+function AssignmentsView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [returnModal, setReturnModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [filter, setFilter] = useState("Open");
+  const [fItem, setFItem] = useState("All");
+  const [fEmployee, setFEmployee] = useState("All");
+
+  const openItems = data.items.filter((it) => itemStatus(it, data.deliveries) === "Pending" && it.tasks[0] && it.tasks[0].quantity - taskAssigned(it, it.tasks[0].id, data.assignments) > 0);
+  const openNew = () => { const first = openItems[0]; setModal({ itemId: first?.id || "", taskId: first?.tasks[0]?.id || "", employeeId: data.employees[0]?.id || "", assignedQty: "", assignedDate: todayStr() }); };
+  const selectedItem = modal ? data.items.find((it) => it.id === modal.itemId) : null;
+  const selectedTask = selectedItem ? selectedItem.tasks[0] : null;
+  const rawLeft = selectedItem && selectedTask ? Math.max(selectedTask.quantity - taskAssigned(selectedItem, selectedTask.id, data.assignments), 0) : 0;
+
+  const save = () => {
+    if (!modal.itemId || !modal.taskId || !modal.employeeId || !modal.assignedQty) { alert("Fill in all fields."); return; }
+    setData({
+      ...data, assignments: [...data.assignments, {
+        id: uid("asg"), itemId: modal.itemId, taskId: modal.taskId, employeeId: modal.employeeId,
+        assignedQty: Number(modal.assignedQty), returnedQty: 0, assignedDate: modal.assignedDate, returnedDate: null, status: "In Progress", paid: false,
+      }],
+    });
+    setModal(null);
+  };
+
+  const commitReturn = (a, newAssignedQty) => {
+    const status = a.fullyComplete ? "Returned" : "In Progress";
+    setData({
+      ...data,
+      assignments: data.assignments.map((x) => x.id === a.id ? { ...x, returnedQty: Number(a.returnedQty), returnedDate: a.returnedDate || todayStr(), assignedQty: newAssignedQty != null ? newAssignedQty : x.assignedQty, status } : x),
+    });
+    setReturnModal(null); setConfirm(null);
+  };
+
+  const saveReturn = () => {
+    const a = returnModal;
+    const returnedQty = Number(a.returnedQty);
+    if (returnedQty < 0) { alert("Returned quantity can't be negative."); return; }
+    if (a.fullyComplete && returnedQty !== Number(a.assignedQty)) {
+      setConfirm({
+        message: `Returned quantity (${numFmt(returnedQty)}) is different from the assigned quantity (${numFmt(a.assignedQty)}). Update the assigned quantity to match?`,
+        onYes: () => commitReturn(a, returnedQty),
+        onNo: () => commitReturn(a, null),
+      });
+      return;
+    }
+    commitReturn(a, null);
+  };
+
+  const list = data.assignments.filter((a) =>
+    (filter === "All" || (filter === "Open" ? a.status !== "Returned" : a.status === "Returned")) &&
+    (fItem === "All" || a.itemId === fItem) && (fEmployee === "All" || a.employeeId === fEmployee)
+  );
+  const clearFilters = () => { setFItem("All"); setFEmployee("All"); setFilter("All"); };
+
+  return (
+    <div>
+      <Header title="Work Assignment" subtitle="Give pieces to employees and record what comes back" action={<button className="pwt-btn accent" onClick={openNew} disabled={openItems.length === 0 || data.employees.length === 0}><Plus size={15} /> Assign work</button>} />
+      {(openItems.length === 0 || data.employees.length === 0) && <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>You need at least one pending item with raw pieces left, and one employee, before assigning work.</div>}
+      <div className="pwt-tabs">{["Open", "Returned", "All"].map((f) => <div key={f} className={"pwt-tab" + (filter === f ? " active" : "")} onClick={() => setFilter(f)}>{f}</div>)}</div>
+      <div className="pwt-filterbar">
+        <div><label className="pwt-label">Item</label>
+          <select className="pwt-select" value={fItem} onChange={(e) => setFItem(e.target.value)}>
+            <option value="All">All items</option>
+            {data.items.map((it) => <option key={it.id} value={it.id}>{itemLabel(it)}</option>)}
+          </select></div>
+        <div><label className="pwt-label">Employee</label>
+          <select className="pwt-select" value={fEmployee} onChange={(e) => setFEmployee(e.target.value)}>
+            <option value="All">All employees</option>
+            {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select></div>
+        <div className="pwt-fb-narrow"><button className="pwt-btn ghost sm" onClick={clearFilters}>Clear filters</button></div>
+      </div>
+      <div className="pwt-card">
+        {list.length === 0 ? <Empty text="No work assignments match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Item</th><th>Task</th><th>Assigned</th><th>Returned</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+              {list.slice().reverse().map((a) => {
+                const emp = data.employees.find((e) => e.id === a.employeeId);
+                const item = data.items.find((it) => it.id === a.itemId);
+                const task = item?.tasks.find((t) => t.id === a.taskId);
+                return (
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td>
+                    <td>{item?.itemName || "—"} <span className="pwt-ledger-id">{item?.id.slice(-6)}</span></td>
+                    <td>{task?.taskType || "—"}</td>
+                    <td className="pwt-mono">{numFmt(a.assignedQty)}</td><td className="pwt-mono">{numFmt(a.returnedQty)}</td>
+                    <td><span className={"pwt-badge " + (a.status === "Returned" ? "completed" : "progress")}>{a.status}</span></td>
+                    <td style={{ textAlign: "right" }}>{a.status !== "Returned" && <button className="pwt-btn ghost sm" onClick={() => setReturnModal({ ...a, returnedQty: a.returnedQty || "", fullyComplete: false })}>Update return</button>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {modal && (
+        <Modal title="Assign work to employee" onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Item</label>
+            <select className="pwt-select" value={modal.itemId} onChange={(e) => { const it = data.items.find((x) => x.id === e.target.value); setModal({ ...modal, itemId: e.target.value, taskId: it?.tasks[0]?.id || "" }); }}>
+              {openItems.map((it) => <option key={it.id} value={it.id}>{itemLabel(it)}</option>)}
+            </select></div>
+          {selectedTask && (
+            <div className="pwt-note">Task: <b>{selectedTask.taskType}</b> — {numFmt(rawLeft)} pieces left unassigned @ {won(selectedTask.ratePerPiece)}/pc</div>
+          )}
+          <div className="pwt-field"><label className="pwt-label">Employee</label>
+            <select className="pwt-select" value={modal.employeeId} onChange={(e) => setModal({ ...modal, employeeId: e.target.value })}>
+              {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+            </select></div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Quantity to assign</label><input className="pwt-input" type="number" min="0" value={modal.assignedQty} onChange={(e) => setModal({ ...modal, assignedQty: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Assigned date</label><input type="date" className="pwt-input" value={modal.assignedDate} onChange={(e) => setModal({ ...modal, assignedDate: e.target.value })} /></div>
+          </div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Assign</button>
+        </Modal>
+      )}
+
+      {returnModal && (
+        <Modal title="Update returned quantity" onClose={() => setReturnModal(null)}>
+          <div style={{ fontSize: 13, color: "var(--ink-soft)", marginBottom: 10 }}>Assigned: <b className="pwt-mono">{numFmt(returnModal.assignedQty)}</b> pieces</div>
+          <div className="pwt-field"><label className="pwt-label">Returned quantity so far</label><input className="pwt-input" type="number" min="0" value={returnModal.returnedQty} onChange={(e) => setReturnModal({ ...returnModal, returnedQty: e.target.value })} /></div>
+          <div className="pwt-field"><label className="pwt-label">Return date</label><input type="date" className="pwt-input" value={returnModal.returnedDate || todayStr()} onChange={(e) => setReturnModal({ ...returnModal, returnedDate: e.target.value })} /></div>
+          <div className="pwt-check-row">
+            <input type="checkbox" checked={returnModal.fullyComplete} onChange={(e) => setReturnModal({ ...returnModal, fullyComplete: e.target.checked })} id="fc" />
+            <label htmlFor="fc">Mark as fully complete (employee is done with this work)</label>
+          </div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={saveReturn}>Save</button>
+        </Modal>
+      )}
+      {confirm && <ConfirmDialog message={confirm.message} onYes={confirm.onYes} onNo={confirm.onNo} />}
+    </div>
+  );
+}
+
+/* ---------------------------------- payslips --------------------------------------- */
+
+function PayslipsView({ data, setData }) {
+  const [gen, setGen] = useState(null);
+  const [printSlip, setPrintSlip] = useState(null);
+  const [fEmployee, setFEmployee] = useState("All");
+  const [fFrom, setFFrom] = useState("");
+  const [fTo, setFTo] = useState("");
+
+  const openGen = () => setGen({ employeeId: data.employees[0]?.id || "", periodType: "Month", start: todayStr().slice(0, 7) + "-01", end: todayStr() });
+
+  const previewItems = useMemo(() => {
+    if (!gen || !gen.employeeId) return [];
+    return data.assignments.filter((a) => a.employeeId === gen.employeeId && !a.paid && a.returnedQty > 0 && a.returnedDate >= gen.start && a.returnedDate <= gen.end)
+      .map((a) => {
+        const item = data.items.find((i) => i.id === a.itemId);
+        const task = item?.tasks.find((t) => t.id === a.taskId);
+        return { assignmentId: a.id, itemId: a.itemId, itemName: item?.itemName, taskType: task?.taskType, qty: a.returnedQty, rate: task?.ratePerPiece || 0, amount: a.returnedQty * (task?.ratePerPiece || 0) };
+      });
+  }, [gen, data]);
+  const previewTotal = previewItems.reduce((s, i) => s + i.amount, 0);
+
+  const generate = () => {
+    if (previewItems.length === 0) { alert("No unpaid returned work found for this employee in the selected period."); return; }
+    const payment = { id: uid("pay"), employeeId: gen.employeeId, periodStart: gen.start, periodEnd: gen.end, items: previewItems, total: previewTotal, generatedDate: todayStr() };
+    setData({ ...data, payments: [...data.payments, payment], assignments: data.assignments.map((a) => previewItems.some((i) => i.assignmentId === a.id) ? { ...a, paid: true } : a) });
+    setGen(null); setPrintSlip(payment);
+  };
+
+  const share = (payment) => {
+    const emp = data.employees.find((e) => e.id === payment.employeeId);
+    const text = `Payslip for ${emp?.name}\nPeriod: ${fmtDate(payment.periodStart)} to ${fmtDate(payment.periodEnd)}\nPieces paid: ${payment.items.reduce((s, i) => s + i.qty, 0)}\nTotal: ${won(payment.total)}`;
+    if (navigator.share) navigator.share({ title: "Payslip", text }).catch(() => {});
+    else { const phone = (emp?.contact || "").replace(/[^0-9]/g, ""); window.open(`https://wa.me/${phone}?text=${encodeURIComponent(text)}`, "_blank"); }
+  };
+
+  const clearFilters = () => { setFEmployee("All"); setFFrom(""); setFTo(""); };
+  const filteredPayments = data.payments.filter((p) =>
+    (fEmployee === "All" || p.employeeId === fEmployee) &&
+    (!fFrom || p.periodEnd >= fFrom) && (!fTo || p.periodStart <= fTo)
+  );
+
+  return (
+    <div>
+      <Header title="Payslips" subtitle="Generate and share employee payments for a period" action={<button className="pwt-btn accent" onClick={openGen} disabled={data.employees.length === 0}><Plus size={15} /> Generate payslip</button>} />
+      <div className="pwt-filterbar">
+        <div><label className="pwt-label">Employee</label>
+          <select className="pwt-select" value={fEmployee} onChange={(e) => setFEmployee(e.target.value)}>
+            <option value="All">All employees</option>
+            {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          </select></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Period from</label><input type="date" className="pwt-input" value={fFrom} onChange={(e) => setFFrom(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Period to</label><input type="date" className="pwt-input" value={fTo} onChange={(e) => setFTo(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><button className="pwt-btn ghost sm" onClick={clearFilters}>Clear filters</button></div>
+      </div>
+      <div className="pwt-card">
+        {filteredPayments.length === 0 ? <Empty text="No payslips match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Employee</th><th>Period</th><th>Pieces</th><th>Total</th><th>Generated</th><th></th></tr></thead>
+            <tbody>
+              {filteredPayments.slice().reverse().map((p) => {
+                const emp = data.employees.find((e) => e.id === p.employeeId);
+                return (
+                  <tr key={p.id}>
+                    <td style={{ fontWeight: 600 }}>{emp?.name || "—"}</td><td>{fmtDate(p.periodStart)} → {fmtDate(p.periodEnd)}</td>
+                    <td className="pwt-mono">{numFmt(p.items.reduce((s, i) => s + i.qty, 0))}</td><td className="pwt-mono">{won(p.total)}</td><td>{fmtDate(p.generatedDate)}</td>
+                    <td style={{ textAlign: "right", display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                      <button className="pwt-icon-btn" onClick={() => setPrintSlip(p)}><Printer size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => share(p)}><Share2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {gen && (
+        <Modal title="Generate payslip" onClose={() => setGen(null)} wide>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Employee</label>
+              <select className="pwt-select" value={gen.employeeId} onChange={(e) => setGen({ ...gen, employeeId: e.target.value })}>
+                {data.employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select></div>
+            <div className="pwt-field"><label className="pwt-label">Period type</label>
+              <select className="pwt-select" value={gen.periodType} onChange={(e) => {
+                const pt = e.target.value; let start = gen.start, end = todayStr();
+                if (pt === "Week") { const d = new Date(); d.setDate(d.getDate() - 7); start = d.toISOString().slice(0, 10); }
+                if (pt === "Month") start = todayStr().slice(0, 7) + "-01";
+                setGen({ ...gen, periodType: pt, start, end });
+              }}><option>Week</option><option>Month</option><option>Custom</option></select></div>
+            <div className="pwt-field"><label className="pwt-label">From</label><input type="date" className="pwt-input" value={gen.start} onChange={(e) => setGen({ ...gen, start: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">To</label><input type="date" className="pwt-input" value={gen.end} onChange={(e) => setGen({ ...gen, end: e.target.value })} /></div>
+          </div>
+          <div className="pwt-divider" />
+          <div className="pwt-stat-label" style={{ marginBottom: 8 }}>Unpaid returned work in this period</div>
+          {previewItems.length === 0 ? <div style={{ fontSize: 13, color: "var(--ink-soft)" }}>Nothing found — try widening the date range.</div> : (
+            <table className="pwt-table">
+              <thead><tr><th>Item</th><th>Task</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+              <tbody>{previewItems.map((i) => (
+                <tr key={i.assignmentId}><td>{i.itemName}</td><td>{i.taskType}</td><td className="pwt-mono">{numFmt(i.qty)}</td><td className="pwt-mono">{won(i.rate)}</td><td className="pwt-mono">{won(i.amount)}</td></tr>
+              ))}</tbody>
+            </table>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 10, fontWeight: 700 }}><span>Total</span><span className="pwt-mono">{won(previewTotal)}</span></div>
+          <div className="pwt-divider" />
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={generate} disabled={previewItems.length === 0}>Generate payslip</button>
+        </Modal>
+      )}
+      {printSlip && <PrintPayslip data={data} payment={printSlip} onClose={() => setPrintSlip(null)} onShare={() => share(printSlip)} />}
+    </div>
+  );
+}
+
+function PrintPayslip({ data, payment, onClose, onShare }) {
+  const emp = data.employees.find((e) => e.id === payment.employeeId);
+  return (
+    <div className="pwt-modal-overlay pwt-noprint" onClick={onClose}>
+      <div className="pwt-modal wide" onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head pwt-noprint"><div className="pwt-modal-title">Payslip preview</div><button className="pwt-close-btn" onClick={onClose}><X size={18} /></button></div>
+        <div className="pwt-print-sheet">
+          <h2 style={{ marginBottom: 2 }}>Payslip</h2>
+          <div style={{ color: "#56645f", fontSize: 13, marginBottom: 18 }}>Generated {fmtDate(payment.generatedDate)}</div>
+          <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+            <div><div className="pwt-label">Employee</div><div style={{ fontWeight: 600 }}>{emp?.name}</div></div>
+            <div><div className="pwt-label">Period</div><div>{fmtDate(payment.periodStart)} → {fmtDate(payment.periodEnd)}</div></div>
+            <div><div className="pwt-label">Bank</div><div>{emp?.bankName === "Other" ? emp?.bankOther : emp?.bankName} — {emp?.accountNumber}</div></div>
+            <div><div className="pwt-label">Account holder</div><div>{emp?.accountHolder || emp?.name}</div></div>
+          </div>
+          <table className="pwt-table">
+            <thead><tr><th>Item</th><th>Task</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+            <tbody>{payment.items.map((i) => (
+              <tr key={i.assignmentId}><td>{i.itemName}</td><td>{i.taskType}</td><td className="pwt-mono">{numFmt(i.qty)}</td><td className="pwt-mono">{won(i.rate)}</td><td className="pwt-mono">{won(i.amount)}</td></tr>
+            ))}</tbody>
+          </table>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontSize: 17, fontWeight: 700 }}><span>Total due</span><span className="pwt-mono">{won(payment.total)}</span></div>
+        </div>
+        <div className="pwt-noprint" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          <button className="pwt-btn ghost" onClick={() => window.print()}><Printer size={14} /> Print / Save PDF</button>
+          <button className="pwt-btn accent" onClick={onShare}><Share2 size={14} /> Share to employee</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------------- deliveries --------------------------------------- */
+
+function DeliveriesView({ data, setData }) {
+  const [modal, setModal] = useState(null);
+  const [editModal, setEditModal] = useState(null);
+  const [confirm, setConfirm] = useState(null);
+  const [printNote, setPrintNote] = useState(null);
+
+  const deliverableItems = data.items.filter((it) => itemStatus(it, data.deliveries) === "Pending");
+  const openNew = () => {
+    const it = deliverableItems[0];
+    setModal({ itemId: it?.id || "", deliveredQty: it ? String(itemTotalQty(it)) : "", deliveredDate: todayStr(), ratePerPiece: "" });
+  };
+
+  const commitDelivery = (qty) => {
+    const revenue = qty * Number(modal.ratePerPiece);
+    const delivery = { id: uid("del"), itemId: modal.itemId, deliveredQty: qty, deliveredDate: modal.deliveredDate, ratePerPiece: Number(modal.ratePerPiece), revenue };
+    setData({ ...data, deliveries: [...data.deliveries, delivery] });
+    setModal(null); setConfirm(null); setPrintNote(delivery);
+  };
+
+  const checkQtyMatch = () => {
+    const item = data.items.find((i) => i.id === modal.itemId);
+    const qty = Number(modal.deliveredQty);
+    const planned = itemTotalQty(item);
+    if (qty !== planned) {
+      setConfirm({
+        message: `Delivered quantity (${numFmt(qty)}) doesn't match this item's original total quantity (${numFmt(planned)}). Set the delivered quantity to ${numFmt(planned)} to match?`,
+        onYes: () => commitDelivery(planned),
+        onNo: () => setConfirm(null),
+        noHint: "Delivery will not be recorded — you can adjust the quantity and try again.",
+      });
+      return;
+    }
+    commitDelivery(qty);
+  };
+
+  const save = () => {
+    const item = data.items.find((i) => i.id === modal.itemId);
+    const qty = Number(modal.deliveredQty);
+    if (!qty || qty <= 0) { alert("Enter a delivered quantity."); return; }
+    if (!modal.ratePerPiece) { alert("Enter the rate the company pays per piece."); return; }
+    const stock = itemStock(item, data.assignments, data.deliveries);
+    if (stock.raw > 0 || stock.wip > 0) {
+      setConfirm({
+        message: `This item still has pieces not fully returned by employees (${numFmt(stock.raw)} raw, ${numFmt(stock.wip)} still with employees). Continue with delivery anyway?`,
+        onYes: () => { setConfirm(null); checkQtyMatch(); },
+        onNo: () => setConfirm(null),
+      });
+      return;
+    }
+    checkQtyMatch();
+  };
+
+  const saveEdit = () => {
+    const qty = Number(editModal.deliveredQty);
+    if (!qty || qty <= 0) { alert("Enter a delivered quantity."); return; }
+    if (!editModal.ratePerPiece) { alert("Enter the rate the company pays per piece."); return; }
+    const revenue = qty * Number(editModal.ratePerPiece);
+    setData({
+      ...data,
+      deliveries: data.deliveries.map((d) => d.id === editModal.id ? { ...d, deliveredQty: qty, ratePerPiece: Number(editModal.ratePerPiece), deliveredDate: editModal.deliveredDate, revenue } : d),
+    });
+    setEditModal(null);
+  };
+
+  const askDelete = (d) => {
+    const item = data.items.find((i) => i.id === d.itemId);
+    setConfirm({
+      message: `Delete this delivery record for "${item?.itemName || "this item"}" (${numFmt(d.deliveredQty)} pcs, ${won(d.revenue)})? The item will become available for assignment and delivery again.`,
+      onYes: () => { setData({ ...data, deliveries: data.deliveries.filter((x) => x.id !== d.id) }); setConfirm(null); },
+      onNo: () => setConfirm(null),
+    });
+  };
+
+  const [fItem, setFItem] = useState("All");
+  const [fCompany, setFCompany] = useState("All");
+  const [fFrom, setFFrom] = useState("");
+  const [fTo, setFTo] = useState("");
+  const clearFilters = () => { setFItem("All"); setFCompany("All"); setFFrom(""); setFTo(""); };
+  const filteredDeliveries = data.deliveries.filter((d) => {
+    const item = data.items.find((i) => i.id === d.itemId);
+    return (fItem === "All" || d.itemId === fItem) &&
+      (fCompany === "All" || item?.companyId === fCompany) &&
+      (!fFrom || d.deliveredDate >= fFrom) && (!fTo || d.deliveredDate <= fTo);
+  });
+
+  return (
+    <div>
+      <Header title="Deliveries" subtitle="Send the finished item back to the company and record revenue" action={<button className="pwt-btn accent" onClick={openNew} disabled={deliverableItems.length === 0}><Plus size={15} /> New delivery</button>} />
+      {deliverableItems.length === 0 && <div className="pwt-card" style={{ marginBottom: 14, fontSize: 13, color: "var(--warning)" }}>No items are ready for delivery yet (or everything has already been delivered).</div>}
+      <div className="pwt-filterbar">
+        <div><label className="pwt-label">Item</label>
+          <select className="pwt-select" value={fItem} onChange={(e) => setFItem(e.target.value)}>
+            <option value="All">All items</option>
+            {data.items.map((it) => <option key={it.id} value={it.id}>{itemLabel(it)}</option>)}
+          </select></div>
+        <div><label className="pwt-label">Company</label>
+          <select className="pwt-select" value={fCompany} onChange={(e) => setFCompany(e.target.value)}>
+            <option value="All">All companies</option>
+            {data.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">From</label><input type="date" className="pwt-input" value={fFrom} onChange={(e) => setFFrom(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">To</label><input type="date" className="pwt-input" value={fTo} onChange={(e) => setFTo(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><button className="pwt-btn ghost sm" onClick={clearFilters}>Clear filters</button></div>
+      </div>
+      <div className="pwt-card">
+        {filteredDeliveries.length === 0 ? <Empty text="No deliveries match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Item</th><th>Company</th><th>Delivered</th><th>Rate</th><th>Revenue</th><th>Date</th><th></th></tr></thead>
+            <tbody>
+              {filteredDeliveries.slice().reverse().map((d) => {
+                const item = data.items.find((i) => i.id === d.itemId);
+                const co = data.companies.find((c) => c.id === item?.companyId);
+                return (
+                  <tr key={d.id}>
+                    <td>{item?.itemName || "—"} <span className="pwt-ledger-id">{d.itemId.slice(-6)}</span></td>
+                    <td style={{ fontWeight: 600 }}>{co?.name || "—"}</td>
+                    <td className="pwt-mono">{numFmt(d.deliveredQty)}</td><td className="pwt-mono">{won(d.ratePerPiece)}</td><td className="pwt-mono">{won(d.revenue)}</td>
+                    <td>{fmtDate(d.deliveredDate)}</td>
+                    <td style={{ textAlign: "right", display: "flex", gap: 2, justifyContent: "flex-end" }}>
+                      <button className="pwt-icon-btn" onClick={() => setPrintNote(d)}><Printer size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => setEditModal({ ...d })}><Edit2 size={14} /></button>
+                      <button className="pwt-icon-btn" onClick={() => askDelete(d)}><Trash2 size={14} /></button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {modal && (
+        <Modal title="Record delivery" onClose={() => setModal(null)}>
+          <div className="pwt-field"><label className="pwt-label">Item</label>
+            <select className="pwt-select" value={modal.itemId} onChange={(e) => { const it = data.items.find((x) => x.id === e.target.value); setModal({ ...modal, itemId: e.target.value, deliveredQty: it ? String(itemTotalQty(it)) : "" }); }}>
+              {deliverableItems.map((it) => { const co = data.companies.find((c) => c.id === it.companyId); return <option key={it.id} value={it.id}>{itemLabel(it)} — {co?.name}</option>; })}
+            </select></div>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Delivered quantity</label><input className="pwt-input" type="number" min="0" value={modal.deliveredQty} onChange={(e) => setModal({ ...modal, deliveredQty: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Rate paid by company (₩/pc)</label><input className="pwt-input" type="number" min="0" value={modal.ratePerPiece} onChange={(e) => setModal({ ...modal, ratePerPiece: e.target.value })} /></div>
+          </div>
+          <div className="pwt-field"><label className="pwt-label">Delivery date</label><input type="date" className="pwt-input" value={modal.deliveredDate} onChange={(e) => setModal({ ...modal, deliveredDate: e.target.value })} /></div>
+          <div className="pwt-note">This closes out the item — once recorded, it won't appear in Work Assignment or Delivery lists again.</div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={save}>Record delivery</button>
+        </Modal>
+      )}
+      {editModal && (
+        <Modal title="Edit delivery" onClose={() => setEditModal(null)}>
+          <div className="pwt-grid pwt-grid-2">
+            <div className="pwt-field"><label className="pwt-label">Delivered quantity</label><input className="pwt-input" type="number" min="0" value={editModal.deliveredQty} onChange={(e) => setEditModal({ ...editModal, deliveredQty: e.target.value })} /></div>
+            <div className="pwt-field"><label className="pwt-label">Rate paid by company (₩/pc)</label><input className="pwt-input" type="number" min="0" value={editModal.ratePerPiece} onChange={(e) => setEditModal({ ...editModal, ratePerPiece: e.target.value })} /></div>
+          </div>
+          <div className="pwt-field"><label className="pwt-label">Delivery date</label><input type="date" className="pwt-input" value={editModal.deliveredDate} onChange={(e) => setEditModal({ ...editModal, deliveredDate: e.target.value })} /></div>
+          <button className="pwt-btn accent" style={{ width: "100%", justifyContent: "center" }} onClick={saveEdit}>Save changes</button>
+        </Modal>
+      )}
+      {confirm && <ConfirmDialog message={confirm.message} onYes={confirm.onYes} onNo={confirm.onNo} noHint={confirm.noHint} />}
+      {printNote && <PrintDeliveryNote data={data} delivery={printNote} onClose={() => setPrintNote(null)} />}
+    </div>
+  );
+}
+
+function PrintDeliveryNote({ data, delivery, onClose }) {
+  const item = data.items.find((i) => i.id === delivery.itemId);
+  const co = data.companies.find((c) => c.id === item?.companyId);
+  return (
+    <div className="pwt-modal-overlay pwt-noprint" onClick={onClose}>
+      <div className="pwt-modal wide" onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head pwt-noprint"><div className="pwt-modal-title">Delivery note preview</div><button className="pwt-close-btn" onClick={onClose}><X size={18} /></button></div>
+        <div className="pwt-print-sheet">
+          <h2 style={{ marginBottom: 2 }}>Delivery Note</h2>
+          <div style={{ color: "#56645f", fontSize: 13, marginBottom: 18 }}>{item?.itemName} · {item?.id.slice(-6)} · {fmtDate(delivery.deliveredDate)}</div>
+          <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+            <div><div className="pwt-label">Company</div><div style={{ fontWeight: 600 }}>{co?.name}</div></div>
+            <div><div className="pwt-label">Delivered quantity</div><div className="pwt-mono">{numFmt(delivery.deliveredQty)} pcs</div></div>
+          </div>
+          <table className="pwt-table">
+            <thead><tr><th>Description</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+            <tbody><tr><td>{item?.itemName}</td><td className="pwt-mono">{numFmt(delivery.deliveredQty)}</td><td className="pwt-mono">{won(delivery.ratePerPiece)}</td><td className="pwt-mono">{won(delivery.revenue)}</td></tr></tbody>
+          </table>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 14, fontSize: 17, fontWeight: 700 }}><span>Total</span><span className="pwt-mono">{won(delivery.revenue)}</span></div>
+        </div>
+        <div className="pwt-noprint" style={{ marginTop: 16 }}><button className="pwt-btn ghost" onClick={() => window.print()}><Printer size={14} /> Print / Save PDF</button></div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------------------------- reports ----------------------------------------- */
+
+function ReportsView({ data }) {
+  const [fCompany, setFCompany] = useState("All");
+  const [fMonthFrom, setFMonthFrom] = useState("");
+  const [fMonthTo, setFMonthTo] = useState("");
+  const [fStatus, setFStatus] = useState("All");
+  const clearFilters = () => { setFCompany("All"); setFMonthFrom(""); setFMonthTo(""); setFStatus("All"); };
+
+  const filteredDeliveries = data.deliveries.filter((d) => {
+    const item = data.items.find((i) => i.id === d.itemId);
+    const mk = monthKey(d.deliveredDate);
+    return (fCompany === "All" || item?.companyId === fCompany) && (!fMonthFrom || mk >= fMonthFrom) && (!fMonthTo || mk <= fMonthTo);
+  });
+  const totalRevenue = filteredDeliveries.reduce((s, d) => s + Number(d.revenue || 0), 0);
+  const byCompanyMonth = {};
+  for (const d of filteredDeliveries) {
+    const item = data.items.find((i) => i.id === d.itemId);
+    const co = data.companies.find((c) => c.id === item?.companyId);
+    const mk = monthKey(d.deliveredDate);
+    const key = `${co?.id}|${mk}`;
+    if (!byCompanyMonth[key]) byCompanyMonth[key] = { company: co?.name || "—", month: mk, revenue: 0, qty: 0 };
+    byCompanyMonth[key].revenue += Number(d.revenue || 0);
+    byCompanyMonth[key].qty += Number(d.deliveredQty || 0);
+  }
+  const rows = Object.values(byCompanyMonth).sort((a, b) => (a.month < b.month ? 1 : -1));
+
+  const filteredItems = data.items.filter((it) =>
+    (fCompany === "All" || it.companyId === fCompany) && (fStatus === "All" || itemStatus(it, data.deliveries) === fStatus)
+  );
+  let totalRaw = 0, totalWip = 0, totalFinished = 0;
+  for (const it of filteredItems) { const s = itemStock(it, data.assignments, data.deliveries); totalRaw += s.raw; totalWip += s.wip; totalFinished += s.finished; }
+
+  return (
+    <div>
+      <Header title="Reports" subtitle="Revenue and stock, at a glance" />
+      <div className="pwt-filterbar">
+        <div><label className="pwt-label">Company</label>
+          <select className="pwt-select" value={fCompany} onChange={(e) => setFCompany(e.target.value)}>
+            <option value="All">All companies</option>
+            {data.companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select></div>
+        <div><label className="pwt-label">Item status</label>
+          <select className="pwt-select" value={fStatus} onChange={(e) => setFStatus(e.target.value)}>
+            <option value="All">All</option><option value="Pending">Pending</option><option value="Completed">Completed</option>
+          </select></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Month from</label><input type="month" className="pwt-input" value={fMonthFrom} onChange={(e) => setFMonthFrom(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><label className="pwt-label">Month to</label><input type="month" className="pwt-input" value={fMonthTo} onChange={(e) => setFMonthTo(e.target.value)} /></div>
+        <div className="pwt-fb-narrow"><button className="pwt-btn ghost sm" onClick={clearFilters}>Clear filters</button></div>
+      </div>
+      <div className="pwt-grid pwt-grid-2" style={{ marginBottom: 16 }}>
+        <Stat label="Total revenue (filtered)" value={won(totalRevenue)} />
+        <Stat label="Total stock (filtered items)" value={`${numFmt(totalRaw + totalWip + totalFinished)} pcs`} sub={`${numFmt(totalRaw)} raw · ${numFmt(totalWip)} WIP · ${numFmt(totalFinished)} finished`} />
+      </div>
+      <div className="pwt-card" style={{ marginBottom: 16 }}>
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Company-wise monthly revenue</div>
+        {rows.length === 0 ? <Empty text="No deliveries match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Company</th><th>Month</th><th>Pieces delivered</th><th>Revenue</th></tr></thead>
+            <tbody>{rows.map((r, i) => <tr key={i}><td style={{ fontWeight: 600 }}>{r.company}</td><td>{r.month}</td><td className="pwt-mono">{numFmt(r.qty)}</td><td className="pwt-mono">{won(r.revenue)}</td></tr>)}</tbody>
+          </table>
+        )}
+      </div>
+      <div className="pwt-card">
+        <div className="pwt-stat-label" style={{ marginBottom: 10 }}>Item status &amp; stock</div>
+        {filteredItems.length === 0 ? <Empty text="No items match these filters." /> : (
+          <table className="pwt-table">
+            <thead><tr><th>Item</th><th>Company</th><th>Raw</th><th>WIP</th><th>Finished</th><th>Status</th></tr></thead>
+            <tbody>
+              {filteredItems.map((it) => {
+                const co = data.companies.find((c) => c.id === it.companyId);
+                const s = itemStock(it, data.assignments, data.deliveries);
+                const status = itemStatus(it, data.deliveries);
+                return (
+                  <tr key={it.id}>
+                    <td>{it.itemName} <span className="pwt-ledger-id">{it.id.slice(-6)}</span></td><td style={{ fontWeight: 600 }}>{co?.name || "—"}</td>
+                    <td className="pwt-mono">{numFmt(s.raw)}</td><td className="pwt-mono">{numFmt(s.wip)}</td><td className="pwt-mono">{numFmt(s.finished)}</td>
+                    <td><span className={"pwt-badge " + (status === "Completed" ? "completed" : "pending")}>{status}</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------- shared bits ------------------------------------- */
+
+function Modal({ title, children, onClose, wide, narrow }) {
+  return (
+    <div className="pwt-modal-overlay" onClick={onClose}>
+      <div className={"pwt-modal" + (wide ? " wide" : "") + (narrow ? " narrow" : "")} onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-head"><div className="pwt-modal-title">{title}</div><button className="pwt-close-btn" onClick={onClose}><X size={18} /></button></div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function ConfirmDialog({ message, onYes, onNo, noHint }) {
+  return (
+    <div className="pwt-modal-overlay" onClick={onNo} style={{ zIndex: 60 }}>
+      <div className="pwt-modal narrow" onClick={(e) => e.stopPropagation()}>
+        <div className="pwt-modal-title" style={{ marginBottom: 12 }}>Please confirm</div>
+        <div style={{ fontSize: 13.5, marginBottom: 10, lineHeight: 1.5 }}>{message}</div>
+        {noHint && <div className="pwt-note" style={{ marginBottom: 8 }}>{noHint}</div>}
+        <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+          <button className="pwt-btn ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onNo}>No</button>
+          <button className="pwt-btn accent" style={{ flex: 1, justifyContent: "center" }} onClick={onYes}>Yes</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+function Empty({ text }) {
+  return (<div className="pwt-empty"><div className="icon"><AlertTriangle size={26} /></div>{text}</div>);
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+
+</script>
+</body>
+</html>
